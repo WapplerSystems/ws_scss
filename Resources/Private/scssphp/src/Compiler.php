@@ -118,6 +118,7 @@ class Compiler
 
     protected $lineNumberStyle = null;
 
+    /** @var string|Formatter  */
     protected $formatter = 'Leafo\ScssPhp\Formatter\Nested';
 
     protected $rootEnv;
@@ -130,8 +131,13 @@ class Compiler
     private $parsedFiles;
     private $env;
     private $scope;
+
+    /** @var  Parser */
     private $parser;
+
     private $sourcePos;
+
+    /** @var  array */
     private $sourceParsers;
     private $sourceIndex;
     private $storeEnv;
@@ -882,6 +888,7 @@ class Compiler
             $annotation = $this->makeOutputBlock(Type::T_COMMENT);
             $annotation->depth = 0;
 
+            /** @var Parser $parser */
             $parser = $this->sourceParsers[$block->sourceIndex];
             $file = $parser->getSourceName();
             $line = $parser->getLineNo($block->sourcePosition);
@@ -1073,7 +1080,7 @@ class Compiler
     /**
      * Compile selector part
      *
-     * @param arary $piece
+     * @param array $piece
      *
      * @return string
      */
@@ -1128,7 +1135,7 @@ class Compiler
      * @param array                                $stms
      * @param \Leafo\ScssPhp\Formatter\OutputBlock $out
      *
-     * @return array
+     * @return array|null
      */
     protected function compileChildren($stms, OutputBlock $out)
     {
@@ -1139,6 +1146,7 @@ class Compiler
                 return $ret;
             }
         }
+        return null;
     }
 
     /**
@@ -1302,7 +1310,7 @@ class Compiler
      * Compile import; returns true if the value was something that could be imported
      *
      * @param array   $rawPath
-     * @param array   $out
+     * @param OutputBlock   $out
      * @param boolean $once
      *
      * @return boolean
@@ -1709,6 +1717,7 @@ class Compiler
             default:
                 $this->throwError("unknown child type: $child[0]");
         }
+        return null;
     }
 
     /**
@@ -1744,7 +1753,7 @@ class Compiler
      *
      * @param array $value
      *
-     * @return array
+     * @return boolean
      */
     protected function isTruthy($value)
     {
@@ -1763,7 +1772,7 @@ class Compiler
         switch ($value[0]) {
             case Type::T_EXPRESSION:
                 if ($value[1] === '/') {
-                    return $this->shouldEval($value[2], $value[3]);
+                    return $this->shouldEval($value[2]);
                 }
 
                 // fall-thru
@@ -1781,7 +1790,7 @@ class Compiler
      * @param array   $value
      * @param boolean $inExp
      *
-     * @return array
+     * @return array|Node\Number
      */
     protected function reduce($value, $inExp = false)
     {
@@ -2056,7 +2065,7 @@ class Compiler
      * @param array $left
      * @param array $right
      *
-     * @return array
+     * @return Node\Number
      */
     protected function opAddNumberNumber($left, $right)
     {
@@ -2069,7 +2078,7 @@ class Compiler
      * @param array $left
      * @param array $right
      *
-     * @return array
+     * @return Node\Number
      */
     protected function opMulNumberNumber($left, $right)
     {
@@ -2082,7 +2091,7 @@ class Compiler
      * @param array $left
      * @param array $right
      *
-     * @return array
+     * @return Node\Number
      */
     protected function opSubNumberNumber($left, $right)
     {
@@ -2095,7 +2104,7 @@ class Compiler
      * @param array $left
      * @param array $right
      *
-     * @return array
+     * @return Node\Number|array
      */
     protected function opDivNumberNumber($left, $right)
     {
@@ -2112,7 +2121,7 @@ class Compiler
      * @param array $left
      * @param array $right
      *
-     * @return array
+     * @return Node\Number
      */
     protected function opModNumberNumber($left, $right)
     {
@@ -2396,7 +2405,7 @@ class Compiler
      * @param array $left
      * @param array $right
      *
-     * @return array
+     * @return Node\Number
      */
     protected function opCmpNumberNumber($left, $right)
     {
@@ -3121,7 +3130,7 @@ class Compiler
      * Import file
      *
      * @param string $path
-     * @param array  $out
+     * @param OutputBlock  $out
      */
     protected function importFile($path, $out)
     {
@@ -3513,7 +3522,7 @@ class Compiler
      *
      * @param mixed $value
      *
-     * @return array
+     * @return array|Node\Number
      */
     private function coerceValue($value)
     {

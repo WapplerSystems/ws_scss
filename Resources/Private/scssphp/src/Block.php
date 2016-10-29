@@ -52,4 +52,9 @@ class Block
      * @var array
      */
     public $children;
+
+    /**
+     * @var boolean
+     */
+    public $isRoot = false;
 }

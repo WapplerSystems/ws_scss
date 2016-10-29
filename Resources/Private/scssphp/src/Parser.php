@@ -54,11 +54,19 @@ class Parser
     private $sourceName;
     private $sourceIndex;
     private $charset;
+
+    /** @var  integer */
     private $count;
+
+    /** @var  Block */
     private $env;
+
+
     private $inParens;
     private $eatWhiteDefault;
     private $buffer;
+
+    private $commentsSeen = array();
 
     /**
      * Constructor
@@ -991,8 +999,6 @@ class Parser
      */
     protected function mediaQuery(&$out)
     {
-        $s = $this->seek();
-
         $expressions = null;
         $parts = array();
 
@@ -1481,7 +1487,6 @@ class Parser
         $args = array();
 
         while ($this->keyword($var)) {
-            $ss = $this->seek();
 
             if ($this->literal('=') && $this->expression($exp)) {
                 $args[] = array(Type::T_STRING, '', array($var . '='));
@@ -1648,7 +1653,7 @@ class Parser
     /**
      * Parse number with unit
      *
-     * @param array $out
+     * @param Node $unit
      *
      * @return boolean
      */
@@ -1732,8 +1737,6 @@ class Parser
      */
     protected function mixedKeyword(&$out)
     {
-        $s = $this->seek();
-
         $parts = array();
 
         $oldWhite = $this->eatWhiteDefault;
@@ -1885,7 +1888,6 @@ class Parser
      */
     protected function propertyName(&$out)
     {
-        $s = $this->seek();
         $parts = array();
 
         $oldWhite = $this->eatWhiteDefault;
