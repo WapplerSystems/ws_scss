@@ -64,6 +64,8 @@ class RenderPreProcessorHook
             $this->variables = $setup['plugin.']['tx_wsscss.']['variables.'];
         }
 
+        $variablesHash = hash('md5',implode(",", $this->variables));
+
         // we need to rebuild the CSS array to keep order of CSS
         // files
         $cssFiles = array();
@@ -119,7 +121,7 @@ class RenderPreProcessorHook
             // conflicts with same filename in different folders
             GeneralUtility::mkdir_deep(PATH_site . $outputdir);
             $cssRelativeFilename = $outputdir . $filename . (($outputdir == $this->defaultoutputdir) ? "_" . hash('sha1',
-                        $file) : "") . ".css";
+                        $file) : (count($this->variables) > 0 ? "_".$variablesHash : "")) . ".css";
             $cssFilename = PATH_site . $cssRelativeFilename;
 
             /** @var CacheManager $cache */
