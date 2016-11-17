@@ -64,10 +64,9 @@ class RenderPreProcessorHook
             $this->variables = $setup['plugin.']['tx_wsscss.']['variables.'];
         }
 
-        $variablesHash = hash('md5',implode(",", $this->variables));
+        $variablesHash = count($this->variables) > 0 ? hash('md5',implode(",", $this->variables)) : null;
 
-        // we need to rebuild the CSS array to keep order of CSS
-        // files
+        // we need to rebuild the CSS array to keep order of CSS files
         $cssFiles = array();
         foreach ($params['cssFiles'] as $file => $conf) {
             $pathinfo = pathinfo($conf['file']);
