@@ -15,7 +15,7 @@ $EM_CONF[$_EXTKEY] = array(
 	'description' => 'Compiles scss files to CSS files.',
 	'category' => 'fe',
 	'shy' => 0,
-	'version' => '1.1.3',
+	'version' => '1.1.4',
 	'dependencies' => '',
 	'conflicts' => '',
 	'priority' => '',
@@ -28,13 +28,13 @@ $EM_CONF[$_EXTKEY] = array(
 	'clearcacheonload' => 0,
 	'lockType' => '',
 	'author' => 'Sven Wappler',
-	'author_email' => 'typo3@wappler.systems',
-	'author_company' => '',
+	'author_email' => 'typo3YYYY@wappler.systems',
+	'author_company' => 'WapplerSystems',
 	'CGLcompliance' => '',
 	'CGLcompliance_note' => '',
 	'constraints' => array(
 		'depends' => array(
-			'typo3' => '7.1.0-8.4.99',
+			'typo3' => '7.1.0-8.7.99',
 		),
 		'conflicts' => array(
 		),
