@@ -1,0 +1,19 @@
+{
+    "name": "svewap/ws-scss",
+    "description": "SASS compiler for TYPO3",
+    "type": "typo3-cms-extension",
+    "homepage": "http://wappler.systems",
+    "license": "GPL-2.0+",
+    "require": {
+        "typo3/cms": ">=7.1.0, <8.7.99"
+    },
+    "replace": {
+        "ws_scss": "self.version",
+        "svewap/ws-scss": "self.version"
+    },
+    "autoload": {
+        "psr-4": {
+            "WapplerSystems\\WsScss\\": "Classes/"
+        }
+    }
+}
