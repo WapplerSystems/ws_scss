@@ -141,6 +141,8 @@ class RenderPreProcessorHook
             try {
                 if ($contentHashCache == '' || $contentHashCache != $contentHash) {
                     $css = $this->compileScss($scssFilename, $cssFilename, $this->variables, $showLineNumber, $formatter);
+
+                    $cache->set($cacheKey, $contentHash, array());
                 }
             } catch (\Exception $ex) {
                 // log the exception to the TYPO3 log as error
@@ -149,8 +151,6 @@ class RenderPreProcessorHook
                 GeneralUtility::sysLog($ex->getMessage(), GeneralUtility::SYSLOG_SEVERITY_ERROR);
 
             }
-
-            $cache->set($cacheKey, $contentHash, array());
 
             if ($inlineOutput) {
                 unset($cssFiles[$cssRelativeFilename]);
