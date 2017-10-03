@@ -2,7 +2,7 @@
 /**
  * SCSSPHP
  *
- * @copyright 2012-2015 Leaf Corcoran
+ * @copyright 2012-2017 Leaf Corcoran
  *
  * @license http://opensource.org/licenses/MIT MIT
  *
@@ -12,7 +12,7 @@
 namespace Leafo\ScssPhp;
 
 /**
- * SCSS block
+ * Block
  *
  * @author Anthon Pang <anthon.pang@gmail.com>
  */
@@ -31,12 +31,17 @@ class Block
     /**
      * @var integer
      */
-    public $sourcePosition;
+    public $sourceIndex;
 
     /**
      * @var integer
      */
-    public $sourceIndex;
+    public $sourceLine;
+
+    /**
+     * @var integer
+     */
+    public $sourceColumn;
 
     /**
      * @var array
@@ -52,9 +57,4 @@ class Block
      * @var array
      */
     public $children;
-
-    /**
-     * @var boolean
-     */
-    public $isRoot = false;
 }

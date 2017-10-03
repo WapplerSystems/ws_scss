@@ -2,7 +2,7 @@
 /**
  * SCSSPHP
  *
- * @copyright 2012-2015 Leaf Corcoran
+ * @copyright 2012-2017 Leaf Corcoran
  *
  * @license http://opensource.org/licenses/MIT MIT
  *
@@ -16,7 +16,7 @@ use Leafo\ScssPhp\Node;
 use Leafo\ScssPhp\Type;
 
 /**
- * SCSS dimension + optional units
+ * Dimension + optional units
  *
  * {@internal
  *     This is a work-in-progress.
@@ -38,8 +38,8 @@ class Number extends Node implements \ArrayAccess
      *
      * @var array
      */
-    static protected $unitTable = array(
-        'in' => array(
+    static protected $unitTable = [
+        'in' => [
             'in' => 1,
             'pc' => 6,
             'pt' => 72,
@@ -47,27 +47,27 @@ class Number extends Node implements \ArrayAccess
             'cm' => 2.54,
             'mm' => 25.4,
             'q'  => 101.6,
-        ),
-        'turn' => array(
+        ],
+        'turn' => [
             'deg'  => 360,
             'grad' => 400,
             'rad'  => 6.28318530717958647692528676, // 2 * M_PI
             'turn' => 1,
-        ),
-        's' => array(
+        ],
+        's' => [
             's'  => 1,
             'ms' => 1000,
-        ),
-        'Hz' => array(
+        ],
+        'Hz' => [
             'Hz'  => 1,
             'kHz' => 0.001,
-        ),
-        'dpi' => array(
+        ],
+        'dpi' => [
             'dpi'  => 1,
             'dpcm' => 2.54,
             'dppx' => 96,
-        ),
-    );
+        ],
+    ];
 
     /**
      * @var integer|float
@@ -91,8 +91,8 @@ class Number extends Node implements \ArrayAccess
         $this->dimension = $dimension;
         $this->units     = is_array($initialUnit)
             ? $initialUnit
-            : ($initialUnit ? array($initialUnit => 1)
-                            : array());
+            : ($initialUnit ? [$initialUnit => 1]
+                            : []);
     }
 
     /**
@@ -110,7 +110,7 @@ class Number extends Node implements \ArrayAccess
 
         $dimension = $this->dimension;
 
-        foreach (self::$unitTable['in'] as $unit => $conv) {
+        foreach (static::$unitTable['in'] as $unit => $conv) {
             $from       = isset($this->units[$unit]) ? $this->units[$unit] : 0;
             $to         = isset($units[$unit]) ? $units[$unit] : 0;
             $factor     = pow($conv, $from - $to);
@@ -128,7 +128,7 @@ class Number extends Node implements \ArrayAccess
     public function normalize()
     {
         $dimension = $this->dimension;
-        $units     = array();
+        $units     = [];
 
         $this->normalizeUnits($dimension, $units, 'in');
 
@@ -140,8 +140,12 @@ class Number extends Node implements \ArrayAccess
      */
     public function offsetExists($offset)
     {
+        if ($offset === -3) {
+            return $this->sourceColumn !== null;
+        }
+
         if ($offset === -2) {
-            return $sourceIndex !== null;
+            return $this->sourceLine !== null;
         }
 
         if ($offset === -1
@@ -161,11 +165,14 @@ class Number extends Node implements \ArrayAccess
     public function offsetGet($offset)
     {
         switch ($offset) {
+            case -3:
+                return $this->sourceColumn;
+
             case -2:
-                return $this->sourceIndex;
+                return $this->sourceLine;
 
             case -1:
-                return $this->sourcePosition;
+                return $this->sourceIndex;
 
             case 0:
                 return $this->type;
@@ -188,9 +195,11 @@ class Number extends Node implements \ArrayAccess
         } elseif ($offset === 2) {
             $this->units = $value;
         } elseif ($offset == -1) {
-            $this->sourcePosition = $value;
-        } elseif ($offset == -2) {
             $this->sourceIndex = $value;
+        } elseif ($offset == -2) {
+            $this->sourceLine = $value;
+        } elseif ($offset == -3) {
+            $this->sourceColumn = $value;
         }
     }
 
@@ -204,9 +213,11 @@ class Number extends Node implements \ArrayAccess
         } elseif ($offset === 2) {
             $this->units = null;
         } elseif ($offset === -1) {
-            $this->sourcePosition = null;
-        } elseif ($offset === -2) {
             $this->sourceIndex = null;
+        } elseif ($offset === -2) {
+            $this->sourceLine = null;
+        } elseif ($offset === -3) {
+            $this->sourceColumn = null;
         }
     }
 
@@ -227,8 +238,8 @@ class Number extends Node implements \ArrayAccess
      */
     public function unitStr()
     {
-        $numerators = array();
-        $denominators = array();
+        $numerators   = [];
+        $denominators = [];
 
         foreach ($this->units as $unit => $unitSize) {
             if ($unitSize > 0) {
@@ -254,20 +265,19 @@ class Number extends Node implements \ArrayAccess
      */
     public function output(Compiler $compiler = null)
     {
-        $dimension = round($this->dimension, self::$precision);
+        $dimension = round($this->dimension, static::$precision);
 
         $units = array_filter($this->units, function ($unitSize) {
             return $unitSize;
         });
 
-        // @todo refactor normalize()
         if (count($units) > 1 && array_sum($units) === 0) {
             $dimension = $this->dimension;
-            $units     = array();
+            $units     = [];
 
             $this->normalizeUnits($dimension, $units, 'in');
 
-            $dimension = round($dimension, self::$precision);
+            $dimension = round($dimension, static::$precision);
             $units     = array_filter($units, function ($unitSize) {
                 return $unitSize;
             });
@@ -303,11 +313,11 @@ class Number extends Node implements \ArrayAccess
     private function normalizeUnits(&$dimension, &$units, $baseUnit = 'in')
     {
         $dimension = $this->dimension;
-        $units = array();
+        $units     = [];
 
         foreach ($this->units as $unit => $exp) {
-            if (isset(self::$unitTable[$baseUnit][$unit])) {
-                $factor = pow(self::$unitTable[$baseUnit][$unit], $exp);
+            if (isset(static::$unitTable[$baseUnit][$unit])) {
+                $factor = pow(static::$unitTable[$baseUnit][$unit], $exp);
 
                 $unit = $baseUnit;
                 $dimension /= $factor;

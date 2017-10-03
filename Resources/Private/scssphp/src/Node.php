@@ -2,7 +2,7 @@
 /**
  * SCSSPHP
  *
- * @copyright 2012-2015 Leaf Corcoran
+ * @copyright 2012-2017 Leaf Corcoran
  *
  * @license http://opensource.org/licenses/MIT MIT
  *
@@ -12,7 +12,7 @@
 namespace Leafo\ScssPhp;
 
 /**
- * SCSS node
+ * Base node
  *
  * @author Anthon Pang <anthon.pang@gmail.com>
  */
@@ -26,10 +26,15 @@ abstract class Node
     /**
      * @var integer
      */
-    public $sourcePosition;
+    public $sourceIndex;
 
     /**
      * @var integer
      */
-    public $sourceIndex;
+    public $sourceLine;
+
+    /**
+     * @var integer
+     */
+    public $sourceColumn;
 }

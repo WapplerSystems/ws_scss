@@ -2,7 +2,7 @@
 /**
  * SCSSPHP
  *
- * @copyright 2012-2015 Leaf Corcoran
+ * @copyright 2012-2017 Leaf Corcoran
  *
  * @license http://opensource.org/licenses/MIT MIT
  *
@@ -14,7 +14,7 @@ namespace Leafo\ScssPhp\Formatter;
 use Leafo\ScssPhp\Formatter;
 
 /**
- * SCSS compact formatter
+ * Compact formatter
  *
  * @author Leaf Corcoran <leafot@gmail.com>
  */
@@ -32,6 +32,7 @@ class Compact extends Formatter
         $this->close = "}\n\n";
         $this->tagSeparator = ',';
         $this->assignSeparator = ':';
+        $this->keepSemicolons = true;
     }
 
     /**
