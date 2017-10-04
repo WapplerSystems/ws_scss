@@ -24,9 +24,12 @@ namespace WapplerSystems\WsScss\Hooks;
  *  This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
 
+use TYPO3\CMS\Core\Cache\Backend\FileBackend;
 use TYPO3\CMS\Core\Cache\CacheManager;
+use TYPO3\CMS\Core\Page\PageRenderer;
+use TYPO3\CMS\Core\Utility\DebugUtility;
+use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use Leafo\ScssPhp\Compiler;
 
 /**
  * Hook to preprocess scss files
@@ -38,7 +41,7 @@ use Leafo\ScssPhp\Compiler;
 class RenderPreProcessorHook
 {
 
-    protected $defaultoutputdir = "typo3temp/ws_scss/";
+    protected $defaultoutputdir = 'typo3temp/ws_scss/';
 
     private static $visitedFiles = array();
 
@@ -48,11 +51,13 @@ class RenderPreProcessorHook
      * Main hook function
      *
      * @param array $params Array of CSS/javascript and other files
-     * @param object $pagerendere Pagerenderer object
+     * @param PageRenderer $pagerenderer Pagerenderer object
      * @return null
-     *
+     * @throws \BadFunctionCallException
+     * @throws \RuntimeException
+     * @throws \InvalidArgumentException
      */
-    public function renderPreProcessorProc(&$params, \TYPO3\CMS\Core\Page\PageRenderer $pagerenderer)
+    public function renderPreProcessorProc(&$params, PageRenderer $pagerenderer)
     {
 
         if (!is_array($params['cssFiles'])) {
@@ -64,7 +69,7 @@ class RenderPreProcessorHook
             $this->variables = $setup['plugin.']['tx_wsscss.']['variables.'];
         }
 
-        $variablesHash = count($this->variables) > 0 ? hash('md5',implode(",", $this->variables)) : null;
+        $variablesHash = count($this->variables) > 0 ? hash('md5',implode(',', $this->variables)) : null;
 
         // we need to rebuild the CSS array to keep order of CSS files
         $cssFiles = array();
@@ -77,39 +82,39 @@ class RenderPreProcessorHook
             }
 
 
-            $outputdir = $this->defaultoutputdir;
+            $outputDir = $this->defaultoutputdir;
             $inlineOutput = false;
             $filename = $pathinfo['filename'];
             $formatter = null;
             $showLineNumber = false;
-            $outputfile = "";
+            $outputfile = '';
 
             // search settings for scss file
             foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] as $key => $subconf) {
 
-                if (is_string($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) && $GLOBALS['TSFE']->tmpl->getFileName($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) == $file) {
-                    $outputdir = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) : $outputdir;
+                if (is_string($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) && $GLOBALS['TSFE']->tmpl->getFileName($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) === $file) {
+                    $outputDir = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) : $outputDir;
                     $outputfile = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) : null;
                     $formatter = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['formatter']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['formatter']) : null;
                     $showLineNumber = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['linenumber']) ? true : false;
 
                     if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['inlineOutput'])) {
-                        $inlineOutput = boolval(trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['inlineOutput']));
+                        $inlineOutput = (bool)trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['inlineOutput']);
                     }
                 }
             }
             if (strlen($outputfile) > 0) {
-                $outputdir = dirname($outputfile);
+                $outputDir = dirname($outputfile);
                 $filename = basename($outputfile);
             }
 
-            $outputdir = (substr($outputdir, -1) == '/') ? $outputdir : $outputdir . "/";
+            $outputDir = (substr($outputDir, -1) === '/') ? $outputDir : $outputDir . '/';
 
-            if (!strcmp(substr($outputdir, 0, 4), 'EXT:')) {
-                list($extKey, $script) = explode('/', substr($outputdir, 4), 2);
-                if ($extKey && \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::isLoaded($extKey)) {
-                    $extPath = \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::extPath($extKey);
-                    $outputdir = substr($extPath, strlen(PATH_site)) . $script;
+            if (!strcmp(substr($outputDir, 0, 4), 'EXT:')) {
+                list($extKey, $script) = explode('/', substr($outputDir, 4), 2);
+                if ($extKey && ExtensionManagementUtility::isLoaded($extKey)) {
+                    $extPath = ExtensionManagementUtility::extPath($extKey);
+                    $outputDir = substr($extPath, strlen(PATH_site)) . $script;
                 }
             }
 
@@ -118,17 +123,19 @@ class RenderPreProcessorHook
 
             // create filename - hash is important due to the possible
             // conflicts with same filename in different folders
-            GeneralUtility::mkdir_deep(PATH_site . $outputdir);
-            $cssRelativeFilename = $outputdir . $filename . (($outputdir == $this->defaultoutputdir) ? "_" . hash('sha1',
-                        $file) : (count($this->variables) > 0 ? "_".$variablesHash : "")) . ".css";
+            GeneralUtility::mkdir_deep(PATH_site . $outputDir);
+            $cssRelativeFilename = $outputDir . $filename . (($outputDir === $this->defaultoutputdir) ? '_' . hash('sha1',
+                        $file) : (count($this->variables) > 0 ? '_'.$variablesHash : '')) . '.css';
             $cssFilename = PATH_site . $cssRelativeFilename;
 
-            /** @var CacheManager $cache */
-            $cache = \TYPO3\CMS\Core\Utility\GeneralUtility::makeInstance('TYPO3\\CMS\\Core\\Cache\\CacheManager')->getCache('ws_scss');
+            /** @var FileBackend $cache */
+            $cache = GeneralUtility::makeInstance(CacheManager::class)->getCache('ws_scss');
 
             $cacheKey = hash('sha1', $cssRelativeFilename);
-            $contentHash = $this->calculateContentHash($scssFilename, implode(",", $this->variables));
-            if ($showLineNumber) $contentHash .= "l1";
+            $contentHash = $this->calculateContentHash($scssFilename, implode(',', $this->variables));
+            if ($showLineNumber) {
+                $contentHash .= 'l1';
+            }
             $contentHash .= $formatter;
 
             $contentHashCache = '';
@@ -136,25 +143,23 @@ class RenderPreProcessorHook
                 $contentHashCache = $cache->get($cacheKey);
             }
 
-            $css = "";
+            $css = '';
 
             try {
-                if ($contentHashCache == '' || $contentHashCache != $contentHash) {
+                if ($contentHashCache === '' || $contentHashCache !== $contentHash) {
                     $css = $this->compileScss($scssFilename, $cssFilename, $this->variables, $showLineNumber, $formatter);
 
-                    $cache->set($cacheKey, $contentHash, array());
+                    $cache->set($cacheKey, $contentHash, array('scss'), 0);
                 }
             } catch (\Exception $ex) {
-                // log the exception to the TYPO3 log as error
-                echo $ex->getMessage();
+                DebugUtility::debug($ex->getMessage());
 
                 GeneralUtility::sysLog($ex->getMessage(), GeneralUtility::SYSLOG_SEVERITY_ERROR);
-
             }
 
             if ($inlineOutput) {
                 unset($cssFiles[$cssRelativeFilename]);
-                if ($css == "") {
+                if ($css === '') {
                     $css = file_get_contents($cssFilename);
                 }
 
@@ -181,11 +186,12 @@ class RenderPreProcessorHook
      * @param boolean $showLineNumber Show line numbers
      * @param string $formatter name
      * @return string
+     * @throws \BadFunctionCallException
      */
-    protected function compileScss($scssFilename, $cssFilename, $vars = [], $showLineNumber = false, $formatter = "")
+    protected function compileScss($scssFilename, $cssFilename, $vars = [], $showLineNumber = false, $formatter = '')
     {
 
-        $extPath = \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::extPath('ws_scss');
+        $extPath = ExtensionManagementUtility::extPath('ws_scss');
         require_once($extPath . 'Resources/Private/scssphp/scss.inc.php');
 
         $parser = new \Leafo\ScssPhp\Compiler();
@@ -196,7 +202,7 @@ class RenderPreProcessorHook
             if ($showLineNumber) {
                 $parser->setLineNumberStyle(\Leafo\ScssPhp\Compiler::LINE_COMMENTS);
             }
-            if ($formatter != "") {
+            if ($formatter !== '') {
                 $parser->setFormatter($formatter);
             }
 
@@ -217,10 +223,10 @@ class RenderPreProcessorHook
      * @param string $vars
      * @return string
      */
-    protected function calculateContentHash($scssFilename, $vars = "")
+    protected function calculateContentHash($scssFilename, $vars = '')
     {
         if (in_array($scssFilename, self::$visitedFiles)) {
-            return "";
+            return '';
         }
         self::$visitedFiles[] = $scssFilename;
 
@@ -228,28 +234,28 @@ class RenderPreProcessorHook
         $pathinfo = pathinfo($scssFilename);
 
         $hash = hash('sha1', $content);
-        if ($vars != "") {
+        if ($vars !== '') {
             $hash = hash('sha1', $hash . $vars);
         } // hash variables too
 
         preg_match_all('/@import "([^"]*)"/', $content, $imports);
 
         foreach ($imports[1] as $import) {
-            $hashImport = "";
+            $hashImport = '';
 
 
             if (file_exists($pathinfo['dirname'] . '/' . $import . '.scss')) {
                 $hashImport = $this->calculateContentHash($pathinfo['dirname'] . '/' . $import . '.scss');
             } else {
-                $parts = explode("/", $import);
-                $filename = "_" . array_pop($parts);
+                $parts = explode('/', $import);
+                $filename = '_' . array_pop($parts);
                 $parts[] = $filename;
-                if (file_exists($pathinfo['dirname'] . '/' . implode("/", $parts) . '.scss')) {
-                    $hashImport = $this->calculateContentHash($pathinfo['dirname'] . '/' . implode("/",
+                if (file_exists($pathinfo['dirname'] . '/' . implode('/', $parts) . '.scss')) {
+                    $hashImport = $this->calculateContentHash($pathinfo['dirname'] . '/' . implode('/',
                             $parts) . '.scss');
                 }
             }
-            if ($hashImport != "") {
+            if ($hashImport !== '') {
                 $hash = hash('sha1', $hash . $hashImport);
             }
         }
