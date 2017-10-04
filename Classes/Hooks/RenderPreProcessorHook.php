@@ -188,7 +188,7 @@ class RenderPreProcessorHook
      * @return string
      * @throws \BadFunctionCallException
      */
-    protected function compileScss($scssFilename, $cssFilename, $vars = [], $showLineNumber = false, $formatter = '')
+    protected function compileScss($scssFilename, $cssFilename, $vars = [], $showLineNumber = false, $formatter = null)
     {
 
         $extPath = ExtensionManagementUtility::extPath('ws_scss');
@@ -202,7 +202,7 @@ class RenderPreProcessorHook
             if ($showLineNumber) {
                 $parser->setLineNumberStyle(\Leafo\ScssPhp\Compiler::LINE_COMMENTS);
             }
-            if ($formatter !== '') {
+            if ($formatter !== null) {
                 $parser->setFormatter($formatter);
             }
 
