@@ -52,7 +52,7 @@ class RenderPreProcessorHook
      *
      * @param array $params Array of CSS/javascript and other files
      * @param PageRenderer $pagerenderer Pagerenderer object
-     * @return null
+     * @return void
      * @throws \BadFunctionCallException
      * @throws \RuntimeException
      * @throws \InvalidArgumentException
@@ -60,19 +60,19 @@ class RenderPreProcessorHook
     public function renderPreProcessorProc(&$params, PageRenderer $pagerenderer)
     {
 
-        if (!is_array($params['cssFiles'])) {
+        if (!\is_array($params['cssFiles'])) {
             return;
         }
 
         $setup = $GLOBALS['TSFE']->tmpl->setup;
-        if (is_array($setup['plugin.']['tx_wsscss.']['variables.'])) {
+        if (\is_array($setup['plugin.']['tx_wsscss.']['variables.'])) {
             $this->variables = $setup['plugin.']['tx_wsscss.']['variables.'];
         }
 
-        $variablesHash = count($this->variables) > 0 ? hash('md5',implode(',', $this->variables)) : null;
+        $variablesHash = \count($this->variables) > 0 ? hash('md5',implode(',', $this->variables)) : null;
 
         // we need to rebuild the CSS array to keep order of CSS files
-        $cssFiles = array();
+        $cssFiles = [];
         foreach ($params['cssFiles'] as $file => $conf) {
             $pathinfo = pathinfo($conf['file']);
 
@@ -92,19 +92,20 @@ class RenderPreProcessorHook
             // search settings for scss file
             foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] as $key => $subconf) {
 
-                if (is_string($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) && $GLOBALS['TSFE']->tmpl->getFileName($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) === $file) {
+                if (\is_string($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) && $GLOBALS['TSFE']->tmpl->getFileName($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) === $file) {
                     $outputDir = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) : $outputDir;
                     $outputfile = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) : null;
                     $formatter = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['formatter']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['formatter']) : null;
                     $showLineNumber = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['linenumber']) ? true : false;
+                    $useSourceMap = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['sourceMap']) ? true : false;
 
                     if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['inlineOutput'])) {
                         $inlineOutput = (bool)trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['inlineOutput']);
                     }
                 }
             }
-            if (strlen($outputfile) > 0) {
-                $outputDir = dirname($outputfile);
+            if (\strlen($outputfile) > 0) {
+                $outputDir = \dirname($outputfile);
                 $filename = basename($outputfile);
             }
 
@@ -114,7 +115,7 @@ class RenderPreProcessorHook
                 list($extKey, $script) = explode('/', substr($outputDir, 4), 2);
                 if ($extKey && ExtensionManagementUtility::isLoaded($extKey)) {
                     $extPath = ExtensionManagementUtility::extPath($extKey);
-                    $outputDir = substr($extPath, strlen(PATH_site)) . $script;
+                    $outputDir = substr($extPath, \strlen(PATH_site)) . $script;
                 }
             }
 
@@ -125,7 +126,7 @@ class RenderPreProcessorHook
             // conflicts with same filename in different folders
             GeneralUtility::mkdir_deep(PATH_site . $outputDir);
             $cssRelativeFilename = $outputDir . $filename . (($outputDir === $this->defaultoutputdir) ? '_' . hash('sha1',
-                        $file) : (count($this->variables) > 0 ? '_'.$variablesHash : '')) . '.css';
+                        $file) : (\count($this->variables) > 0 ? '_'.$variablesHash : '')) . '.css';
             $cssFilename = PATH_site . $cssRelativeFilename;
 
             /** @var FileBackend $cache */
@@ -135,6 +136,9 @@ class RenderPreProcessorHook
             $contentHash = $this->calculateContentHash($scssFilename, implode(',', $this->variables));
             if ($showLineNumber) {
                 $contentHash .= 'l1';
+            }
+            if ($useSourceMap) {
+                $contentHash .= 'sm';
             }
             $contentHash .= $formatter;
 
@@ -147,9 +151,9 @@ class RenderPreProcessorHook
 
             try {
                 if ($contentHashCache === '' || $contentHashCache !== $contentHash) {
-                    $css = $this->compileScss($scssFilename, $cssFilename, $this->variables, $showLineNumber, $formatter);
+                    $css = $this->compileScss($scssFilename, $cssFilename, $this->variables, $showLineNumber, $formatter, $cssRelativeFilename, $useSourceMap);
 
-                    $cache->set($cacheKey, $contentHash, array('scss'), 0);
+                    $cache->set($cacheKey, $contentHash, ['scss'], 0);
                 }
             } catch (\Exception $ex) {
                 DebugUtility::debug($ex->getMessage());
@@ -164,9 +168,9 @@ class RenderPreProcessorHook
                 }
 
                 // TODO: compression
-                $params['cssInline'][$cssRelativeFilename] = array(
+                $params['cssInline'][$cssRelativeFilename] = [
                     'code' => $css,
-                );
+                ];
             } else {
                 $cssFiles[$cssRelativeFilename] = $params['cssFiles'][$file];
                 $cssFiles[$cssRelativeFilename]['file'] = $cssRelativeFilename;
@@ -185,10 +189,12 @@ class RenderPreProcessorHook
      * @param array $vars Variables to compile
      * @param boolean $showLineNumber Show line numbers
      * @param string $formatter name
+     * @param string $cssRelativeFilename
+     * @param boolean $useSourceMap Use SourceMap
      * @return string
      * @throws \BadFunctionCallException
      */
-    protected function compileScss($scssFilename, $cssFilename, $vars = [], $showLineNumber = false, $formatter = null)
+    protected function compileScss($scssFilename, $cssFilename, $vars = [], $showLineNumber = false, $formatter = null, $cssRelativeFilename, $useSourceMap = false)
     {
 
         $extPath = ExtensionManagementUtility::extPath('ws_scss');
@@ -204,6 +210,17 @@ class RenderPreProcessorHook
             }
             if ($formatter !== null) {
                 $parser->setFormatter($formatter);
+            }
+
+            if ($useSourceMap) {
+                $parser->setSourceMap(\Leafo\ScssPhp\Compiler::SOURCE_MAP_INLINE);
+
+                $parser->setSourceMapOptions(array(
+                    'sourceMapWriteTo' => $cssFilename . '.map',
+                    'sourceMapURL' => $cssRelativeFilename . '.map',
+                    'sourceMapBasepath' => PATH_site,
+                    'sourceMapRootpath' => '/',
+                ));
             }
 
             $css = $parser->compile('@import "' . $scssFilename . '";');
@@ -225,7 +242,7 @@ class RenderPreProcessorHook
      */
     protected function calculateContentHash($scssFilename, $vars = '')
     {
-        if (in_array($scssFilename, self::$visitedFiles)) {
+        if (\in_array($scssFilename, self::$visitedFiles)) {
             return '';
         }
         self::$visitedFiles[] = $scssFilename;
@@ -265,5 +282,3 @@ class RenderPreProcessorHook
 
 
 }
-
-?>
