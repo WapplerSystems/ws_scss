@@ -3,7 +3,7 @@
     "description": "SASS compiler for TYPO3",
     "type": "typo3-cms-extension",
     "homepage": "http://wappler.systems",
-    "license": "GPL-2.0+",
+    "license": "GPL-2.0-or-later",
     "require": {
         "typo3/cms": ">=7.1.0, <8.7.99"
     },
