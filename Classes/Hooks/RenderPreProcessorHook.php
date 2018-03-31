@@ -30,6 +30,7 @@ use TYPO3\CMS\Core\Page\PageRenderer;
 use TYPO3\CMS\Core\Utility\DebugUtility;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Core\Log\LogManager;
 
 /**
  * Hook to preprocess scss files
@@ -158,7 +159,9 @@ class RenderPreProcessorHook
             } catch (\Exception $ex) {
                 DebugUtility::debug($ex->getMessage());
 
-                GeneralUtility::sysLog($ex->getMessage(), GeneralUtility::SYSLOG_SEVERITY_ERROR);
+                /** @var $logger \TYPO3\CMS\Core\Log\Logger */
+                $logger = GeneralUtility::makeInstance(LogManager::class)->getLogger(__CLASS__);
+                $logger->error($ex->getMessage());
             }
 
             if ($inlineOutput) {
