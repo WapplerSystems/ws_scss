@@ -4,9 +4,6 @@ namespace WapplerSystems\WsScss\Hooks;
 /***************************************************************
  *  Copyright notice
  *
- *  (c) 2013 WapplerSystems <typo3YYYY@wapplersystems.de>
- *  All rights reserved
- *
  *  This script is part of the TYPO3 project. The TYPO3 project is
  *  free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
