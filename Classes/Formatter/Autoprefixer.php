@@ -13,7 +13,6 @@ namespace WapplerSystems\WsScss\Formatter;
 
 use Leafo\ScssPhp\Formatter;
 use Leafo\ScssPhp\Formatter\OutputBlock;
-use TYPO3\CMS\Core\Utility\DebugUtility;
 
 /**
  * Debug formatter
