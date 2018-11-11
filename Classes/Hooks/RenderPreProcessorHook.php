@@ -31,6 +31,7 @@ use TYPO3\CMS\Core\Utility\DebugUtility;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Log\LogManager;
+use TYPO3\CMS\Core\Utility\VersionNumberUtility;
 
 /**
  * Hook to preprocess scss files
@@ -42,11 +43,9 @@ use TYPO3\CMS\Core\Log\LogManager;
 class RenderPreProcessorHook
 {
 
-    protected $defaultoutputdir = 'typo3temp/ws_scss/';
+    private static $visitedFiles = [];
 
-    private static $visitedFiles = array();
-
-    private $variables = array();
+    private $variables = [];
 
     /**
      * Main hook function
@@ -83,23 +82,29 @@ class RenderPreProcessorHook
             }
 
 
-            $outputDir = $this->defaultoutputdir;
+            $outputDir = PATH_site . 'typo3temp/var/transient/';
+            if (VersionNumberUtility::convertVersionNumberToInteger(VersionNumberUtility::getCurrentTypo3Version()) < VersionNumberUtility::convertVersionNumberToInteger('8.0.0')) {
+                $outputDir = PATH_site . 'typo3temp/';
+            }
             $inlineOutput = false;
             $filename = $pathinfo['filename'];
             $formatter = null;
             $showLineNumber = false;
-            $outputfile = '';
+            $useSourceMap = false;
+            $outputFile = '';
 
             // search settings for scss file
             foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] as $key => $subconf) {
 
                 if (\is_string($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) && $GLOBALS['TSFE']->tmpl->getFileName($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) === $file) {
                     $outputDir = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) : $outputDir;
-                    $outputfile = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) : null;
+                    $outputFile = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) : null;
                     $formatter = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['formatter']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['formatter']) : null;
                     $showLineNumber = false;
                     if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['linenumber'])) {
-                        if ($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['linenumber'] === 'true' || (int)$GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['linenumber'] === 1) $showLineNumber = true;
+                        if ($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['linenumber'] === 'true' || (int)$GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['linenumber'] === 1) {
+                            $showLineNumber = true;
+                        }
                     }
                     $useSourceMap = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['sourceMap']) ? true : false;
 
@@ -108,9 +113,9 @@ class RenderPreProcessorHook
                     }
                 }
             }
-            if (\strlen($outputfile) > 0) {
-                $outputDir = \dirname($outputfile);
-                $filename = basename($outputfile);
+            if ($outputFile !== '') {
+                $outputDir = \dirname($outputFile);
+                $filename = basename($outputFile);
             }
 
             $outputDir = (substr($outputDir, -1) === '/') ? $outputDir : $outputDir . '/';
@@ -204,7 +209,7 @@ class RenderPreProcessorHook
     {
 
         $extPath = ExtensionManagementUtility::extPath('ws_scss');
-        require_once($extPath . 'Resources/Private/scssphp/scss.inc.php');
+        require_once $extPath . 'Resources/Private/scssphp/scss.inc.php';
 
         $parser = new \Leafo\ScssPhp\Compiler();
         if (file_exists($scssFilename)) {
@@ -221,12 +226,12 @@ class RenderPreProcessorHook
             if ($useSourceMap) {
                 $parser->setSourceMap(\Leafo\ScssPhp\Compiler::SOURCE_MAP_INLINE);
 
-                $parser->setSourceMapOptions(array(
+                $parser->setSourceMapOptions([
                     'sourceMapWriteTo' => $cssFilename . '.map',
                     'sourceMapURL' => $cssRelativeFilename . '.map',
                     'sourceMapBasepath' => PATH_site,
                     'sourceMapRootpath' => '/',
-                ));
+                ]);
             }
 
             $css = $parser->compile('@import "' . $scssFilename . '";');
@@ -248,7 +253,7 @@ class RenderPreProcessorHook
      */
     protected function calculateContentHash($scssFilename, $vars = '')
     {
-        if (\in_array($scssFilename, self::$visitedFiles)) {
+        if (\in_array($scssFilename, self::$visitedFiles, true)) {
             return '';
         }
         self::$visitedFiles[] = $scssFilename;
