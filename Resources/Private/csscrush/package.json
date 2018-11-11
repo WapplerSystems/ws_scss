@@ -1,6 +1,6 @@
 {
     "name": "csscrush",
-    "version": "3.0.0-beta.3",
+    "version": "3.0.0-beta.4",
     "description": "CSS-Crush, CSS preprocessor",
     "repository": {
         "type": "git",
@@ -18,7 +18,7 @@
     "homepage": "http://the-echoplex.net/csscrush",
     "license": "MIT",
     "devDependencies": {
-        "eslint": "~4.12.1",
+        "eslint": "~5.3.0",
         "normalize.css": "7.0.0"
     }
 }

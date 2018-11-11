@@ -1,24 +1,34 @@
-const childProcess = require('child_process');
 const path = require('path');
 const EventEmitter = require('events');
 const cliPath = path.resolve(__dirname, './cli.php');
 
+const processes = [];
+const processExec = (...args) => {
+    processes.push(require('child_process').exec(...args));
+    return processes[processes.length-1];
+};
+
+process.on('exit', () => {
+    processes.filter(it => it).forEach(proc => proc.kill());
+});
+
 const self = module.exports = {};
 
 class Process extends EventEmitter {
+
     exec(options) {
         return new Promise(resolve => {
             let command = this.assembleCommand(options);
-            let {stdIn} = options;
+            const {stdIn} = options;
             if (stdIn) {
                 command = `echo '${stdIn.replace(/'/g, "\\'")}' | ${command}`;
             }
-            childProcess.exec(command, (error, stdout, stderr) => {
+            processExec(command, (error, stdout, stderr) => {
                 process.stderr.write(stderr.toString());
                 if (error) {
                     return resolve(false);
                 }
-                let stdOut = stdout.toString();
+                const stdOut = stdout.toString();
                 if (stdIn) {
                     process.stdout.write(stdOut);
                 }
@@ -30,10 +40,12 @@ class Process extends EventEmitter {
     watch(options) {
         options.watch = true;
         const command = this.assembleCommand(options);
-        const proc = childProcess.exec(command);
+        const proc = processExec(command);
 
-        // Emitting 'error' events from EventEmitter without
-        // any error listener will throw uncaught exception.
+        /*
+         * Emitting 'error' events from EventEmitter without
+         * any error listener will throw uncaught exception.
+         */
         this.on('error', () => {});
 
         proc.stderr.on('data', msg => {
@@ -41,9 +53,9 @@ class Process extends EventEmitter {
             process.stderr.write(msg);
             msg = msg.replace(/\x1B\[[^m]*m/g, '').trim();
 
-            let [, signal, detail] = /^([A-Z]+):\s*(.+)/i.exec(msg) || [];
-            let {input, output} = options;
-            let eventData = {
+            const [, signal, detail] = /^([A-Z]+):\s*(.+)/i.exec(msg) || [];
+            const {input, output} = options;
+            const eventData = {
                 signal,
                 options: {
                     input: input ? path.resolve(input) : null,
@@ -52,7 +64,7 @@ class Process extends EventEmitter {
             };
 
             if (/^(WARNING|ERROR)$/.test(signal)) {
-                let error = new Error(detail);
+                const error = new Error(detail);
                 Object.assign(error, eventData, {severity: signal.toLowerCase()});
                 this.emit('error', error);
             }
@@ -69,10 +81,10 @@ class Process extends EventEmitter {
 
     stringifyOptions(options) {
         const args = [];
-        options = Object.assign({}, options);
+        options = {...options};
         for (let name in options) {
             // Normalize to hypenated case.
-            let cssCase = name.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`);
+            const cssCase = name.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`);
             if (name !== cssCase) {
                 options[cssCase] = options[name];
                 delete options[name];
@@ -99,7 +111,7 @@ class Process extends EventEmitter {
                 case 'import-path':
                     if (value) {
                         value = (Array.isArray(value) ? value : [value]).join(',');
-                        args.push(`--${name}=${value}`);
+                        args.push(`--${name}="${value}"`);
                     }
                     break;
                 // String values.
@@ -109,7 +121,7 @@ class Process extends EventEmitter {
                 case 'context': // fallthrough
                 case 'output':
                     if (value) {
-                        args.push(`--${name}='${value}'`);
+                        args.push(`--${name}="${value}"`);
                     }
                     break;
             }
@@ -122,10 +134,12 @@ self.watch = (file, options={}) => {
     options.input = file;
     return (new Process()).watch(options);
 };
+
 self.file = (file, options={}) => {
     options.input = file;
     return (new Process()).exec(options);
 };
+
 self.string = (string, options={}) => {
     options.stdIn = string;
     return (new Process()).exec(options);
