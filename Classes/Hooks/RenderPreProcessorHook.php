@@ -79,9 +79,9 @@ class RenderPreProcessorHook
             }
 
 
-            $outputDir = PATH_site . 'typo3temp/var/transient/';
+            $outputDir = 'typo3temp/assets/css/';
             if (VersionNumberUtility::convertVersionNumberToInteger(VersionNumberUtility::getCurrentTypo3Version()) < VersionNumberUtility::convertVersionNumberToInteger('8.0.0')) {
-                $outputDir = PATH_site . 'typo3temp/';
+                $outputDir = 'typo3temp/';
             }
             $inlineOutput = false;
             $filename = $pathinfo['filename'];
@@ -110,7 +110,7 @@ class RenderPreProcessorHook
                     }
                 }
             }
-            if ($outputFile !== '') {
+            if ($outputFile !== null) {
                 $outputDir = \dirname($outputFile);
                 $filename = basename($outputFile);
             }
@@ -202,7 +202,7 @@ class RenderPreProcessorHook
      * @return string
      * @throws \BadFunctionCallException
      */
-    protected function compileScss($scssFilename, $cssFilename, $vars = [], $showLineNumber = false, $formatter = null, $cssRelativeFilename, $useSourceMap = false)
+    protected function compileScss($scssFilename, $cssFilename, $vars = [], $showLineNumber = false, $formatter = null, $cssRelativeFilename = null, $useSourceMap = false)
     {
 
         $extPath = ExtensionManagementUtility::extPath('ws_scss');
