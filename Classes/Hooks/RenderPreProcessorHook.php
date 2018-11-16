@@ -61,6 +61,11 @@ class RenderPreProcessorHook
             return;
         }
 
+        $defaultoutputdir = 'typo3temp/assets/css/';
+        if (VersionNumberUtility::convertVersionNumberToInteger(VersionNumberUtility::getCurrentTypo3Version()) < VersionNumberUtility::convertVersionNumberToInteger('8.0.0')) {
+            $defaultoutputdir = 'typo3temp/';
+        }
+
         $setup = $GLOBALS['TSFE']->tmpl->setup;
         if (\is_array($setup['plugin.']['tx_wsscss.']['variables.'])) {
             $this->variables = $setup['plugin.']['tx_wsscss.']['variables.'];
@@ -78,11 +83,8 @@ class RenderPreProcessorHook
                 continue;
             }
 
+            $outputDir = $defaultoutputdir;
 
-            $outputDir = 'typo3temp/assets/css/';
-            if (VersionNumberUtility::convertVersionNumberToInteger(VersionNumberUtility::getCurrentTypo3Version()) < VersionNumberUtility::convertVersionNumberToInteger('8.0.0')) {
-                $outputDir = 'typo3temp/';
-            }
             $inlineOutput = false;
             $filename = $pathinfo['filename'];
             $formatter = null;
@@ -131,7 +133,7 @@ class RenderPreProcessorHook
             // create filename - hash is important due to the possible
             // conflicts with same filename in different folders
             GeneralUtility::mkdir_deep(PATH_site . $outputDir);
-            $cssRelativeFilename = $outputDir . $filename . (($outputDir === $this->defaultoutputdir) ? '_' . hash('sha1',
+            $cssRelativeFilename = $outputDir . $filename . (($outputDir === $defaultoutputdir) ? '_' . hash('sha1',
                         $file) : (\count($this->variables) > 0 ? '_'.$variablesHash : '')) . '.css';
             $cssFilename = PATH_site . $cssRelativeFilename;
 
