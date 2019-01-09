@@ -29,6 +29,7 @@ use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Log\LogManager;
 use TYPO3\CMS\Core\Utility\VersionNumberUtility;
+use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 
 /**
  * Hook to preprocess scss files
@@ -45,6 +46,11 @@ class RenderPreProcessorHook
     private $variables = [];
 
     /**
+     * @var \TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer
+     */
+    private $contentObjectRenderer = null;
+
+    /**
      * Main hook function
      *
      * @param array $params Array of CSS/javascript and other files
@@ -56,7 +62,6 @@ class RenderPreProcessorHook
      */
     public function renderPreProcessorProc(&$params, PageRenderer $pagerenderer)
     {
-
         if (!\is_array($params['cssFiles'])) {
             return;
         }
@@ -68,7 +73,23 @@ class RenderPreProcessorHook
 
         $setup = $GLOBALS['TSFE']->tmpl->setup;
         if (\is_array($setup['plugin.']['tx_wsscss.']['variables.'])) {
-            $this->variables = $setup['plugin.']['tx_wsscss.']['variables.'];
+
+            $variables = $setup['plugin.']['tx_wsscss.']['variables.'];
+
+            $parsedTypoScriptVariables = [];
+            foreach ($variables as $variable => $key) {
+                if (array_key_exists($variable . '.', $variables)) {
+                    if ($this->contentObjectRenderer === null) {
+                        $this->contentObjectRenderer = GeneralUtility::makeInstance(ContentObjectRenderer::class);
+                    }
+                    $content = $this->contentObjectRenderer->cObjGetSingle($variables[$variable], $variables[$variable . '.']);
+                    $parsedTypoScriptVariables[$variable] = $content;
+
+                } elseif (substr($variable, -1) !== '.') {
+                    $parsedTypoScriptVariables[$variable] = $key;
+                }
+            }
+            $this->variables = $parsedTypoScriptVariables;
         }
 
         $variablesHash = \count($this->variables) > 0 ? hash('md5',implode(',', $this->variables)) : null;
