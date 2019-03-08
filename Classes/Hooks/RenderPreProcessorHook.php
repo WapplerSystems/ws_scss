@@ -48,7 +48,7 @@ class RenderPreProcessorHook
     /**
      * @var \TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer
      */
-    private $contentObjectRenderer = null;
+    private $contentObjectRenderer;
 
     /**
      * Main hook function
@@ -66,9 +66,9 @@ class RenderPreProcessorHook
             return;
         }
 
-        $defaultoutputdir = 'typo3temp/assets/css/';
+        $defaultOutputDir = 'typo3temp/assets/css/';
         if (VersionNumberUtility::convertVersionNumberToInteger(VersionNumberUtility::getCurrentTypo3Version()) < VersionNumberUtility::convertVersionNumberToInteger('8.0.0')) {
-            $defaultoutputdir = 'typo3temp/';
+            $defaultOutputDir = 'typo3temp/';
         }
 
         $setup = $GLOBALS['TSFE']->tmpl->setup;
@@ -97,17 +97,17 @@ class RenderPreProcessorHook
         // we need to rebuild the CSS array to keep order of CSS files
         $cssFiles = [];
         foreach ($params['cssFiles'] as $file => $conf) {
-            $pathinfo = pathinfo($conf['file']);
+            $pathInfo = pathinfo($conf['file']);
 
-            if ($pathinfo['extension'] !== 'scss') {
+            if ($pathInfo['extension'] !== 'scss') {
                 $cssFiles[$file] = $conf;
                 continue;
             }
 
-            $outputDir = $defaultoutputdir;
+            $outputDir = $defaultOutputDir;
 
             $inlineOutput = false;
-            $filename = $pathinfo['filename'];
+            $filename = $pathInfo['filename'];
             $formatter = null;
             $showLineNumber = false;
             $useSourceMap = false;
@@ -141,7 +141,7 @@ class RenderPreProcessorHook
             $outputDir = (substr($outputDir, -1) === '/') ? $outputDir : $outputDir . '/';
 
             if (!strcmp(substr($outputDir, 0, 4), 'EXT:')) {
-                list($extKey, $script) = explode('/', substr($outputDir, 4), 2);
+                [$extKey, $script] = explode('/', substr($outputDir, 4), 2);
                 if ($extKey && ExtensionManagementUtility::isLoaded($extKey)) {
                     $extPath = ExtensionManagementUtility::extPath($extKey);
                     $outputDir = substr($extPath, \strlen(PATH_site)) . $script;
@@ -154,7 +154,7 @@ class RenderPreProcessorHook
             // create filename - hash is important due to the possible
             // conflicts with same filename in different folders
             GeneralUtility::mkdir_deep(PATH_site . $outputDir);
-            $cssRelativeFilename = $outputDir . $filename . (($outputDir === $defaultoutputdir) ? '_' . hash('sha1',
+            $cssRelativeFilename = $outputDir . $filename . (($outputDir === $defaultOutputDir) ? '_' . hash('sha1',
                         $file) : (\count($this->variables) > 0 ? '_'.$variablesHash : '')) . '.css';
             $cssFilename = PATH_site . $cssRelativeFilename;
 
@@ -225,7 +225,7 @@ class RenderPreProcessorHook
      * @return string
      * @throws \BadFunctionCallException
      */
-    protected function compileScss($scssFilename, $cssFilename, $vars = [], $showLineNumber = false, $formatter = null, $cssRelativeFilename = null, $useSourceMap = false)
+    protected function compileScss($scssFilename, $cssFilename, $vars = [], $showLineNumber = false, $formatter = null, $cssRelativeFilename = null, $useSourceMap = false): string
     {
 
         $extPath = ExtensionManagementUtility::extPath('ws_scss');
@@ -271,7 +271,7 @@ class RenderPreProcessorHook
      * @param string $vars
      * @return string
      */
-    protected function calculateContentHash($scssFilename, $vars = '')
+    protected function calculateContentHash($scssFilename, $vars = ''): string
     {
         if (\in_array($scssFilename, self::$visitedFiles, true)) {
             return '';
