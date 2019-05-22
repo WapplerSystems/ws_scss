@@ -112,14 +112,16 @@ class RenderPreProcessorHook
             $showLineNumber = false;
             $useSourceMap = false;
             $outputFile = '';
+            $dependencies = array();
 
             // search settings for scss file
             foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] as $key => $subconf) {
-
                 if (\is_string($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) && $GLOBALS['TSFE']->tmpl->getFileName($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) === $file) {
                     $outputDir = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) : $outputDir;
                     $outputFile = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) : null;
                     $formatter = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['formatter']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['formatter']) : null;
+					$dependencies = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['dependencies.']) ? $GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['dependencies.'] : [];
+
                     $showLineNumber = false;
                     if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['linenumber'])) {
                         if ($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['linenumber'] === 'true' || (int)$GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['linenumber'] === 1) {
@@ -151,6 +153,24 @@ class RenderPreProcessorHook
 
             $scssFilename = GeneralUtility::getFileAbsFileName($conf['file']);
 
+            foreach($dependencies as &$dependency){
+            	$dependency = GeneralUtility::getFileAbsFileName($dependency);
+            	$file = basename($dependency);
+
+            	$fileA = '_'.$file.'.scss';
+            	$fileB = $file.'.scss';
+
+            	$lastSlashPos = strrpos($dependency,'/');
+            	$path = substr($dependency,0,$lastSlashPos);
+
+            	$realDependencyPathA = $path.'/'.$fileA;
+            	$realDependencyPathB = $path.'/'.$fileB;
+
+            	if(!file_exists($realDependencyPathA) && !file_exists($realDependencyPathB)){
+					DebugUtility::debug($realDependencyPathA.' oder '.$realDependencyPathB.' File does not exists');
+				}
+			}
+
             // create filename - hash is important due to the possible
             // conflicts with same filename in different folders
             GeneralUtility::mkdir_deep(PATH_site . $outputDir);
@@ -180,7 +200,7 @@ class RenderPreProcessorHook
 
             try {
                 if ($contentHashCache === '' || $contentHashCache !== $contentHash) {
-                    $css = $this->compileScss($scssFilename, $cssFilename, $this->variables, $showLineNumber, $formatter, $cssRelativeFilename, $useSourceMap);
+                    $css = $this->compileScss($scssFilename, $cssFilename, $this->variables, $showLineNumber, $formatter, $cssRelativeFilename, $useSourceMap, $dependencies);
 
                     $cache->set($cacheKey, $contentHash, ['scss'], 0);
                 }
@@ -225,43 +245,47 @@ class RenderPreProcessorHook
      * @return string
      * @throws \BadFunctionCallException
      */
-    protected function compileScss($scssFilename, $cssFilename, $vars = [], $showLineNumber = false, $formatter = null, $cssRelativeFilename = null, $useSourceMap = false): string
+    protected function compileScss($scssFilename, $cssFilename, $vars = [], $showLineNumber = false, $formatter = null, $cssRelativeFilename = null, $useSourceMap = false, $dependencies = []): string
     {
+		$extPath = ExtensionManagementUtility::extPath('ws_scss');
+		require_once $extPath . 'Resources/Private/scssphp/scss.inc.php';
 
-        $extPath = ExtensionManagementUtility::extPath('ws_scss');
-        require_once $extPath . 'Resources/Private/scssphp/scss.inc.php';
+		$parser = new \Leafo\ScssPhp\Compiler();
+		if (file_exists($scssFilename)) {
 
-        $parser = new \Leafo\ScssPhp\Compiler();
-        if (file_exists($scssFilename)) {
+			$parser->setVariables($vars);
 
-            $parser->setVariables($vars);
+			if ($showLineNumber) {
+				$parser->setLineNumberStyle(\Leafo\ScssPhp\Compiler::LINE_COMMENTS);
+			}
+			if ($formatter !== null) {
+				$parser->setFormatter($formatter);
+			}
 
-            if ($showLineNumber) {
-                $parser->setLineNumberStyle(\Leafo\ScssPhp\Compiler::LINE_COMMENTS);
-            }
-            if ($formatter !== null) {
-                $parser->setFormatter($formatter);
-            }
+			if ($useSourceMap) {
+				$parser->setSourceMap(\Leafo\ScssPhp\Compiler::SOURCE_MAP_INLINE);
 
-            if ($useSourceMap) {
-                $parser->setSourceMap(\Leafo\ScssPhp\Compiler::SOURCE_MAP_INLINE);
+				$parser->setSourceMapOptions([
+					'sourceMapWriteTo' => $cssFilename . '.map',
+					'sourceMapURL' => $cssRelativeFilename . '.map',
+					'sourceMapBasepath' => PATH_site,
+					'sourceMapRootpath' => '/',
+				]);
+			}
 
-                $parser->setSourceMapOptions([
-                    'sourceMapWriteTo' => $cssFilename . '.map',
-                    'sourceMapURL' => $cssRelativeFilename . '.map',
-                    'sourceMapBasepath' => PATH_site,
-                    'sourceMapRootpath' => '/',
-                ]);
-            }
+			$code = '';
+			foreach($dependencies as $dependency){
+				$code .= '@import "'.$dependency.'";'.PHP_EOL;
+			}
+			$code .= '@import "' . $scssFilename . '";';
+			$css = $parser->compile($code);
 
-            $css = $parser->compile('@import "' . $scssFilename . '";');
+			GeneralUtility::writeFile($cssFilename, $css);
 
-            GeneralUtility::writeFile($cssFilename, $css);
+			return $css;
+		}
 
-            return $css;
-        }
-
-        return '';
+		return '';
     }
 
     /**
