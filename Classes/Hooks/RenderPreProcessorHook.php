@@ -30,6 +30,7 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Log\LogManager;
 use TYPO3\CMS\Core\Utility\VersionNumberUtility;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
+use ScssPhp\ScssPhp\Compiler;
 
 /**
  * Hook to preprocess scss files
@@ -227,20 +228,20 @@ class RenderPreProcessorHook
      */
     protected function compileScss($scssFilename, $cssFilename, $vars = [], $showLineNumber = false, $formatter = null, $cssRelativeFilename = null, $useSourceMap = false): string
     {
-        $parser = new \Leafo\ScssPhp\Compiler();
+        $parser = new Compiler();
         if (file_exists($scssFilename)) {
 
             $parser->setVariables($vars);
 
             if ($showLineNumber) {
-                $parser->setLineNumberStyle(\Leafo\ScssPhp\Compiler::LINE_COMMENTS);
+                $parser->setLineNumberStyle(Compiler::LINE_COMMENTS);
             }
             if ($formatter !== null) {
                 $parser->setFormatter($formatter);
             }
 
             if ($useSourceMap) {
-                $parser->setSourceMap(\Leafo\ScssPhp\Compiler::SOURCE_MAP_INLINE);
+                $parser->setSourceMap(Compiler::SOURCE_MAP_INLINE);
 
                 $parser->setSourceMapOptions([
                     'sourceMapWriteTo' => $cssFilename . '.map',

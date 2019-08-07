@@ -6,7 +6,8 @@
     "license": "GPL-2.0-or-later",
     "require": {
         "typo3/cms-core": ">=7.1.0, <9.5.99",
-        "php": "^7.1"
+        "php": "^7.1",
+        "scssphp/scssphp": "^1.0.2"
     },
     "replace": {
         "ws_scss": "self.version",
