@@ -227,10 +227,6 @@ class RenderPreProcessorHook
      */
     protected function compileScss($scssFilename, $cssFilename, $vars = [], $showLineNumber = false, $formatter = null, $cssRelativeFilename = null, $useSourceMap = false): string
     {
-
-        $extPath = ExtensionManagementUtility::extPath('ws_scss');
-        require_once $extPath . 'Resources/Private/scssphp/scss.inc.php';
-
         $parser = new \Leafo\ScssPhp\Compiler();
         if (file_exists($scssFilename)) {
 
