@@ -1,5 +1,5 @@
 {
-    "name": "svewap/ws-scss",
+    "name": "pprossi/ws-scss",
     "description": "SASS compiler for TYPO3",
     "type": "typo3-cms-extension",
     "homepage": "http://wappler.systems",
@@ -10,7 +10,7 @@
     },
     "replace": {
         "ws_scss": "self.version",
-        "svewap/ws-scss": "self.version"
+        "pprossi/ws-scss": "self.version"
     },
     "autoload": {
         "psr-4": {
