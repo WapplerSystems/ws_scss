@@ -310,7 +310,7 @@ class RenderPreProcessorHook
         } // hash variables too
 
         preg_match_all('/@import "([^"]*)"/', $content, $imports);
-debug($this->parser);
+
         foreach ($imports[1] as $import) {
             $hashImport = '';
 

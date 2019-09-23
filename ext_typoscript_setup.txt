@@ -1,9 +1,17 @@
-
-plugin.tx_wsscss.variables {
-  
-    
-  
-    #test = #666
-  
-
+plugin.tx_wsscss {
+	variables {
+		test = #666
+	}
+	importPaths {
+		#10 = fileadmin/Public/Scss
+		#20 = ../vendor/doctrine
+		#30 = ../bower_components/foundation-sites
+		#40 = ../node_modules/modernizr
+		#50 = DIR:fileadmin/Public/Scss2
+		#60 = DIR:fileadmin/Public/Scss3
+		#70 = DIR:fileadmin/Public/Scss4
+	}
+	# importPathMode replace | append
+	importPathMode = append
+	debug = false
 }
