@@ -27,6 +27,7 @@ use TYPO3\CMS\Core\Page\PageRenderer;
 use TYPO3\CMS\Core\Utility\DebugUtility;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Core\Utility\PathUtility;
 use TYPO3\CMS\Core\Log\LogManager;
 use TYPO3\CMS\Core\Utility\VersionNumberUtility;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
@@ -44,6 +45,9 @@ class RenderPreProcessorHook
     private static $visitedFiles = [];
 
     private $variables = [];
+    private $importPaths = [];
+    private $setup = false;
+    private $parser = false;
 
     /**
      * @var \TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer
@@ -70,18 +74,24 @@ class RenderPreProcessorHook
         if (VersionNumberUtility::convertVersionNumberToInteger(VersionNumberUtility::getCurrentTypo3Version()) < VersionNumberUtility::convertVersionNumberToInteger('8.0.0')) {
             $defaultOutputDir = 'typo3temp/';
         }
+        if ($this->contentObjectRenderer === null) {
+            $this->contentObjectRenderer = GeneralUtility::makeInstance(ContentObjectRenderer::class);
+        }
 
-        $setup = $GLOBALS['TSFE']->tmpl->setup;
-        if (\is_array($setup['plugin.']['tx_wsscss.']['variables.'])) {
+        $this->setup = $GLOBALS['TSFE']->tmpl->setup['plugin.']['tx_wsscss.'];
+        if (\is_array($this->setup['importPaths.'])) {
+            foreach ($this->setup['importPaths.'] as $index => $importPath) {
+                $this->importPaths[] = $this->getStreamlinedPath( $importPath );
+            }
+        }
 
-            $variables = $setup['plugin.']['tx_wsscss.']['variables.'];
+        if (\is_array($this->setup['variables.'])) {
+
+            $variables = $this->setup['variables.'];
 
             $parsedTypoScriptVariables = [];
             foreach ($variables as $variable => $key) {
                 if (array_key_exists($variable . '.', $variables)) {
-                    if ($this->contentObjectRenderer === null) {
-                        $this->contentObjectRenderer = GeneralUtility::makeInstance(ContentObjectRenderer::class);
-                    }
                     $content = $this->contentObjectRenderer->cObjGetSingle($variables[$variable], $variables[$variable . '.']);
                     $parsedTypoScriptVariables[$variable] = $content;
 
@@ -231,22 +241,30 @@ class RenderPreProcessorHook
         $extPath = ExtensionManagementUtility::extPath('ws_scss');
         require_once $extPath . 'Resources/Private/scssphp/scss.inc.php';
 
-        $parser = new \Leafo\ScssPhp\Compiler();
+        $this->parser = new \ScssPhp\ScssPhp\Compiler();
+
         if (file_exists($scssFilename)) {
+            // set import paths
+            if( $this->setup['importPathMode'] === 'replace'){
+                $this->parser->setImportPaths( $this->importPaths );
+            } else {
+                foreach ( $this->importPaths as $addPath ) {
+                    $this->parser->addImportPath($addPath);
+                }
+            }
 
-            $parser->setVariables($vars);
-
+            $this->parser->setVariables($vars);
             if ($showLineNumber) {
-                $parser->setLineNumberStyle(\Leafo\ScssPhp\Compiler::LINE_COMMENTS);
+                $this->parser->setLineNumberStyle(\ScssPhp\ScssPhp\Compiler::LINE_COMMENTS);
             }
             if ($formatter !== null) {
-                $parser->setFormatter($formatter);
+                $this->parser->setFormatter($formatter);
             }
 
             if ($useSourceMap) {
-                $parser->setSourceMap(\Leafo\ScssPhp\Compiler::SOURCE_MAP_INLINE);
+                $this->parser->setSourceMap(\ScssPhp\ScssPhp\Compiler::SOURCE_MAP_INLINE);
 
-                $parser->setSourceMapOptions([
+                $this->parser->setSourceMapOptions([
                     'sourceMapWriteTo' => $cssFilename . '.map',
                     'sourceMapURL' => $cssRelativeFilename . '.map',
                     'sourceMapBasepath' => PATH_site,
@@ -254,9 +272,14 @@ class RenderPreProcessorHook
                 ]);
             }
 
-            $css = $parser->compile('@import "' . $scssFilename . '";');
+            $css = $this->parser->compile(file_get_contents( $scssFilename ));
 
             GeneralUtility::writeFile($cssFilename, $css);
+            if( boolval( $this->setup['debug'] ) ){
+                debug( $this->parser );
+                debug( $this->parser->getParsedFiles() );
+                debug(  $this->setup );
+            }
 
             return $css;
         }
@@ -287,7 +310,7 @@ class RenderPreProcessorHook
         } // hash variables too
 
         preg_match_all('/@import "([^"]*)"/', $content, $imports);
-
+debug($this->parser);
         foreach ($imports[1] as $import) {
             $hashImport = '';
 
@@ -311,5 +334,36 @@ class RenderPreProcessorHook
         return $hash;
     }
 
+    /**
+     *
+     * @param string $path
+     * @param boolean $relPath
+     * @return string parsed path
+     */
+    protected function getStreamlinedPath($path, $relPath=false)
+    {
+        if ( strpos( $path, 'EXT:' ) === 0) {
+            $pathParts = explode( '/', substr( $path, 4 ) );
+            $extKey = array_shift( $pathParts );
+
+            if ( (string) $extKey !== '' && ExtensionManagementUtility::isLoaded( $extKey ) ) {
+                array_unshift( $pathParts, rtrim( ExtensionManagementUtility::extPath( $extKey ), '/') );
+            }
+            $path = implode( '/', $pathParts );
+        } elseif ( strpos( $path, 'DIR:' ) === 0 ) {
+            $pathParts = explode( '/', substr( $path, 4 ) );
+            array_unshift( $pathParts, rtrim(PATH_site, '/') );
+            $path = implode( '/', $pathParts );
+        } elseif ( strpos( $path, '..' ) === 0) {
+            $path = realpath( $path );
+        } else {
+            $path = GeneralUtility::getFileAbsFileName( $path );
+        }
+
+        if($relPath){
+            $path = PathUtility::stripPathSitePrefix($path);
+        }
+        return str_replace('/',DIRECTORY_SEPARATOR, $path) ;
+    }
 
 }
