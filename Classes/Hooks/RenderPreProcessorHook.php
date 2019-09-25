@@ -66,7 +66,7 @@ class RenderPreProcessorHook
             return;
         }
 
-        $defaultOutputDir = 'typo3temp/assets/css/';
+        $defaultOutputDir = 'typo3temp/assets/css/' . GeneralUtility::getIndpEnv('HTTP_HOST') . '/';
         if (VersionNumberUtility::convertVersionNumberToInteger(VersionNumberUtility::getCurrentTypo3Version()) < VersionNumberUtility::convertVersionNumberToInteger('8.0.0')) {
             $defaultOutputDir = 'typo3temp/';
         }
