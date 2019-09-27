@@ -60,6 +60,7 @@ class RenderPreProcessorHook
      * @return array
      */
     public function watch($lastBuildTime){
+        $has_changes = false;
         if( boolval( $this->setup['importPathMode'] ) ){
             $filelist = [];
             foreach ( $this->importPaths as $addPath ) {
