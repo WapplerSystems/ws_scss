@@ -1,6 +1,6 @@
 plugin.tx_wsscss {
 	variables {
-		test = #666
+	#	test = #666
 	}
 	importPaths {
 		#10 = fileadmin/Public/Scss
@@ -13,5 +13,7 @@ plugin.tx_wsscss {
 	}
 	# importPathMode replace | append
 	importPathMode = append
+	# watchImportPath true | false Enable watch for changes in include Path
+	watchImportPath = false
 	debug = false
 }

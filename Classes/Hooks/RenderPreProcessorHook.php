@@ -55,6 +55,30 @@ class RenderPreProcessorHook
     private $contentObjectRenderer;
 
     /**
+     * watch import path files for changed files
+     * @param integer $lastBuildTime
+     * @return array
+     */
+    public function watch($lastBuildTime){
+        if( boolval( $this->setup['importPathMode'] ) ){
+            $filelist = [];
+            foreach ( $this->importPaths as $addPath ) {
+                $filelist=array_merge($filelist, glob( $addPath . "/*.scss" ));
+                $filelist=array_merge($filelist, glob( $addPath . "/**/*.scss" ));
+            }
+            foreach ($filelist as $i => &$watchfile){
+                if (! realpath($watchfile) or filemtime($watchfile) > $lastBuildTime) {
+                    $has_changes = true;
+                    break;
+                }
+                // For Debugging
+                //$watchfile = $watchfile.' - '.filemtime($watchfile);
+            }
+        }
+        //debug($filelist);exit;
+        return $has_changes;
+    }
+    /**
      * Main hook function
      *
      * @param array $params Array of CSS/javascript and other files
@@ -189,7 +213,7 @@ class RenderPreProcessorHook
             $css = '';
 
             try {
-                if ($contentHashCache === '' || $contentHashCache !== $contentHash) {
+                if ($contentHashCache === '' || $contentHashCache !== $contentHash || $this->watch(filemtime($cssFilename)) ) {
                     $css = $this->compileScss($scssFilename, $cssFilename, $this->variables, $showLineNumber, $formatter, $cssRelativeFilename, $useSourceMap);
 
                     $cache->set($cacheKey, $contentHash, ['scss'], 0);
@@ -241,40 +265,54 @@ class RenderPreProcessorHook
         $extPath = ExtensionManagementUtility::extPath('ws_scss');
         require_once $extPath . 'Resources/Private/scssphp/scss.inc.php';
 
-        $this->parser = new \ScssPhp\ScssPhp\Compiler();
+        $scssCacheOptions = [
+            'cache_dir' => $this->getStreamlinedPath('typo3temp/ws_scss/'),
+            'prefix' => 'scssphp_',
+            'forceRefresh' => false
+        ];
+
+        try {
+            $this->parser = new \ScssPhp\ScssPhp\Compiler($scssCacheOptions);
+        }catch(Exception $e){
+            DebugUtility::printArray($e->getMessage());
+        }
+
 
         if (file_exists($scssFilename)) {
             // set import paths
-            if( $this->setup['importPathMode'] === 'replace'){
-                $this->parser->setImportPaths( $this->importPaths );
-            } else {
-                foreach ( $this->importPaths as $addPath ) {
-                    $this->parser->addImportPath($addPath);
+            try {
+                if( $this->setup['importPathMode'] === 'replace'){
+                    $this->parser->setImportPaths( $this->importPaths );
+                } else {
+                    foreach ( $this->importPaths as $addPath ) {
+                        $this->parser->addImportPath($addPath);
+                    }
                 }
-            }
+                $this->parser->setVariables($vars);
+                if ($showLineNumber) {
+                    $this->parser->setLineNumberStyle(\ScssPhp\ScssPhp\Compiler::LINE_COMMENTS);
+                }
+                if ($formatter !== null) {
+                    $this->parser->setFormatter($formatter);
+                }
 
-            $this->parser->setVariables($vars);
-            if ($showLineNumber) {
-                $this->parser->setLineNumberStyle(\ScssPhp\ScssPhp\Compiler::LINE_COMMENTS);
-            }
-            if ($formatter !== null) {
-                $this->parser->setFormatter($formatter);
-            }
+                if ($useSourceMap) {
+                    $this->parser->setSourceMap(\ScssPhp\ScssPhp\Compiler::SOURCE_MAP_INLINE);
 
-            if ($useSourceMap) {
-                $this->parser->setSourceMap(\ScssPhp\ScssPhp\Compiler::SOURCE_MAP_INLINE);
-
-                $this->parser->setSourceMapOptions([
-                    'sourceMapWriteTo' => $cssFilename . '.map',
-                    'sourceMapURL' => $cssRelativeFilename . '.map',
-                    'sourceMapBasepath' => PATH_site,
-                    'sourceMapRootpath' => '/',
-                ]);
+                    $this->parser->setSourceMapOptions([
+                            'sourceMapWriteTo' => $cssFilename . '.map',
+                            'sourceMapURL' => $cssRelativeFilename . '.map',
+                            'sourceMapBasepath' => PATH_site,
+                            'sourceMapRootpath' => '/',
+                    ]);
+                }
+                $css = $this->parser->compile(file_get_contents( $scssFilename ));
+            }catch(\ScssPhp\ScssPhp\Exception\CompilerException $e){
+                DebugUtility::printArray($e->getMessage());
             }
-
-            $css = $this->parser->compile(file_get_contents( $scssFilename ));
 
             GeneralUtility::writeFile($cssFilename, $css);
+
             if( boolval( $this->setup['debug'] ) ){
                 debug( $this->parser );
                 debug( $this->parser->getParsedFiles() );
@@ -356,6 +394,7 @@ class RenderPreProcessorHook
             $path = implode( '/', $pathParts );
         } elseif ( strpos( $path, '..' ) === 0) {
             $path = realpath( $path );
+            $path = str_replace(DIRECTORY_SEPARATOR,'/', $path);
         } else {
             $path = GeneralUtility::getFileAbsFileName( $path );
         }
@@ -363,7 +402,7 @@ class RenderPreProcessorHook
         if($relPath){
             $path = PathUtility::stripPathSitePrefix($path);
         }
-        return str_replace('/',DIRECTORY_SEPARATOR, $path) ;
+        return $path;
     }
 
 }
