@@ -61,7 +61,7 @@ class RenderPreProcessorHook
      */
     public function watch($lastBuildTime){
         $has_changes = false;
-        if( boolval( $this->setup['importPathMode'] ) ){
+        if( boolval( $this->setup['watchImportPath'] ) ){
             $filelist = [];
             foreach ( $this->importPaths as $addPath ) {
                 $filelist=array_merge($filelist, glob( $addPath . "/*.scss" ));
