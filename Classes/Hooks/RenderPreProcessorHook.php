@@ -61,7 +61,7 @@ class RenderPreProcessorHook
      */
     public function watch($lastBuildTime){
         $has_changes = false;
-        if( boolval( $this->setup['watchImportPath'] ) ){
+        if( filter_var($this->setup['watchImportPath'],FILTER_VALIDATE_BOOLEAN) ){
             $filelist = [];
             foreach ( $this->importPaths as $addPath ) {
                 $filelist=array_merge($filelist, glob( $addPath . "/*.scss" ));
@@ -314,7 +314,7 @@ class RenderPreProcessorHook
 
             GeneralUtility::writeFile($cssFilename, $css);
 
-            if( boolval( $this->setup['debug'] ) ){
+            if( filter_var($this->setup['debug'],FILTER_VALIDATE_BOOLEAN) ){
                 debug( $this->parser );
                 debug( $this->parser->getParsedFiles() );
                 debug(  $this->setup );
