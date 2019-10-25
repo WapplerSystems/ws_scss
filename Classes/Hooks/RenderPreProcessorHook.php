@@ -23,6 +23,7 @@ namespace WapplerSystems\WsScss\Hooks;
 
 use TYPO3\CMS\Core\Cache\Backend\FileBackend;
 use TYPO3\CMS\Core\Cache\CacheManager;
+use TYPO3\CMS\Core\Log\Logger;
 use TYPO3\CMS\Core\Page\PageRenderer;
 use TYPO3\CMS\Core\Utility\DebugUtility;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
@@ -187,7 +188,7 @@ class RenderPreProcessorHook
             } catch (\Exception $ex) {
                 DebugUtility::debug($ex->getMessage());
 
-                /** @var $logger \TYPO3\CMS\Core\Log\Logger */
+                /** @var $logger Logger */
                 $logger = GeneralUtility::makeInstance(LogManager::class)->getLogger(__CLASS__);
                 $logger->error($ex->getMessage());
             }
