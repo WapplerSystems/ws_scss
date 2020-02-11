@@ -57,9 +57,11 @@ class RenderPreProcessorHook
      * @param array $params Array of CSS/javascript and other files
      * @param PageRenderer $pagerenderer Pagerenderer object
      * @return void
-     * @throws \BadFunctionCallException
-     * @throws \RuntimeException
-     * @throws \InvalidArgumentException
+     * @throws \TYPO3\CMS\Core\Cache\Exception\NoSuchCacheException
+     * @throws \TYPO3\CMS\Core\Resource\Exception\FileDoesNotExistException
+     * @throws \TYPO3\CMS\Core\Resource\Exception\InvalidFileException
+     * @throws \TYPO3\CMS\Core\Resource\Exception\InvalidFileNameException
+     * @throws \TYPO3\CMS\Core\Resource\Exception\InvalidPathException
      */
     public function renderPreProcessorProc(&$params, PageRenderer $pagerenderer)
     {
