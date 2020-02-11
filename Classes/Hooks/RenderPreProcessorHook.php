@@ -70,9 +70,6 @@ class RenderPreProcessorHook
         }
 
         $defaultOutputDir = 'typo3temp/assets/css/';
-        if (VersionNumberUtility::convertVersionNumberToInteger(VersionNumberUtility::getCurrentTypo3Version()) < VersionNumberUtility::convertVersionNumberToInteger('8.0.0')) {
-            $defaultOutputDir = 'typo3temp/';
-        }
 
         $sitePath = \TYPO3\CMS\Core\Core\Environment::getPublicPath() . '/';
 
