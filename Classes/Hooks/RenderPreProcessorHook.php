@@ -72,6 +72,8 @@ class RenderPreProcessorHook
             $defaultOutputDir = 'typo3temp/';
         }
 
+        $sitePath = \TYPO3\CMS\Core\Core\Environment::getPublicPath() . '/';
+
         $setup = $GLOBALS['TSFE']->tmpl->setup;
         if (\is_array($setup['plugin.']['tx_wsscss.']['variables.'])) {
 
@@ -145,7 +147,7 @@ class RenderPreProcessorHook
                 [$extKey, $script] = explode('/', substr($outputDir, 4), 2);
                 if ($extKey && ExtensionManagementUtility::isLoaded($extKey)) {
                     $extPath = ExtensionManagementUtility::extPath($extKey);
-                    $outputDir = substr($extPath, \strlen(PATH_site)) . $script;
+                    $outputDir = substr($extPath, \strlen($sitePath)) . $script;
                 }
             }
 
@@ -154,10 +156,10 @@ class RenderPreProcessorHook
 
             // create filename - hash is important due to the possible
             // conflicts with same filename in different folders
-            GeneralUtility::mkdir_deep(PATH_site . $outputDir);
+            GeneralUtility::mkdir_deep($sitePath . $outputDir);
             $cssRelativeFilename = $outputDir . $filename . (($outputDir === $defaultOutputDir) ? '_' . hash('sha1',
                         $file) : (\count($this->variables) > 0 ? '_'.$variablesHash : '')) . '.css';
-            $cssFilename = PATH_site . $cssRelativeFilename;
+            $cssFilename = $sitePath . $cssRelativeFilename;
 
             /** @var FileBackend $cache */
             $cache = GeneralUtility::makeInstance(CacheManager::class)->getCache('ws_scss');
@@ -229,6 +231,7 @@ class RenderPreProcessorHook
     protected function compileScss($scssFilename, $cssFilename, $vars = [], $showLineNumber = false, $formatter = null, $cssRelativeFilename = null, $useSourceMap = false): string
     {
 
+        $sitePath = \TYPO3\CMS\Core\Core\Environment::getPublicPath() . '/';
         $extPath = ExtensionManagementUtility::extPath('ws_scss');
         require_once $extPath . 'Resources/Private/scssphp/scss.inc.php';
 
@@ -250,7 +253,7 @@ class RenderPreProcessorHook
                 $parser->setSourceMapOptions([
                     'sourceMapWriteTo' => $cssFilename . '.map',
                     'sourceMapURL' => $cssRelativeFilename . '.map',
-                    'sourceMapBasepath' => PATH_site,
+                    'sourceMapBasepath' => $sitePath,
                     'sourceMapRootpath' => '/',
                 ]);
             }
