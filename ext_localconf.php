@@ -4,7 +4,7 @@ if (!defined('TYPO3_MODE')) {
 }
 
 if (TYPO3_MODE === 'FE') {
-    $GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_pagerenderer.php']['render-preProcess']['wsscss'] = 'WapplerSystems\\WsScss\\Hooks\\RenderPreProcessorHook->renderPreProcessorProc';
+    $GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_pagerenderer.php']['render-preProcess']['wsscss'] = \WapplerSystems\WsScss\Hooks\RenderPreProcessorHook::class . '->renderPreProcessorProc';
 }
 
 // Caching the pages - default expire 3600 seconds
@@ -15,7 +15,5 @@ if (!is_array($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations
 		'options' => [
             'defaultLifetime' => 0,
 		]
-
     ];
 }
-
