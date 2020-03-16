@@ -232,7 +232,11 @@ class RenderPreProcessorHook
         $extPath = ExtensionManagementUtility::extPath('ws_scss');
         require_once $extPath . 'Resources/Private/scssphp/scss.inc.php';
 
-        $parser = new \ScssPhp\ScssPhp\Compiler();
+        $cacheOptions = [
+            'cacheDir' => PATH_site . 'typo3temp/assets/css/cache/',
+            'prefix' => md5($cssFilename),
+        ];
+        $parser = new \ScssPhp\ScssPhp\Compiler($cacheOptions);
         if (file_exists($scssFilename)) {
 
             $parser->setVariables($vars);
