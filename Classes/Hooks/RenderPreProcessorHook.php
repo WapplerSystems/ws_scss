@@ -232,20 +232,20 @@ class RenderPreProcessorHook
         $extPath = ExtensionManagementUtility::extPath('ws_scss');
         require_once $extPath . 'Resources/Private/scssphp/scss.inc.php';
 
-        $parser = new \Leafo\ScssPhp\Compiler();
+        $parser = new \ScssPhp\ScssPhp\Compiler();
         if (file_exists($scssFilename)) {
 
             $parser->setVariables($vars);
 
             if ($showLineNumber) {
-                $parser->setLineNumberStyle(\Leafo\ScssPhp\Compiler::LINE_COMMENTS);
+                $parser->setLineNumberStyle(\ScssPhp\ScssPhp\Compiler::LINE_COMMENTS);
             }
             if ($formatter !== null) {
                 $parser->setFormatter($formatter);
             }
 
             if ($useSourceMap) {
-                $parser->setSourceMap(\Leafo\ScssPhp\Compiler::SOURCE_MAP_INLINE);
+                $parser->setSourceMap(\ScssPhp\ScssPhp\Compiler::SOURCE_MAP_INLINE);
 
                 $parser->setSourceMapOptions([
                     'sourceMapWriteTo' => $cssFilename . '.map',
