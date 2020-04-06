@@ -10,6 +10,7 @@
         "scssphp/scssphp": "^1"
     },
     "replace": {
+        "typo3-ter/ws_scss": "self.version"
     },
     "autoload": {
         "psr-4": {
