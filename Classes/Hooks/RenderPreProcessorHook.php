@@ -231,8 +231,10 @@ class RenderPreProcessorHook
     protected function compileScss($scssFilename, $cssFilename, $vars = [], $showLineNumber = false, $formatter = null, $cssRelativeFilename = null, $useSourceMap = false): string
     {
 
-        $extPath = ExtensionManagementUtility::extPath('ws_scss');
-        require_once $extPath . 'Resources/Private/scssphp/scss.inc.php';
+        if (!class_exists(\ScssPhp\ScssPhp\Version::class, false)) {
+            $extPath = ExtensionManagementUtility::extPath('ws_scss');
+            require_once $extPath . 'Resources/Private/scssphp/scss.inc.php';
+        }
 
         $cacheOptions = [
             'cacheDir' => PATH_site . 'typo3temp/assets/css/cache/',
