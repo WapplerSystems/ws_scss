@@ -117,7 +117,7 @@ class RenderPreProcessorHook
             $formatter = null;
             $showLineNumber = false;
             $useSourceMap = false;
-            $outputFile = '';
+            $outputFile = null;
 
             // search settings for scss file
             if (\is_array($GLOBALS['TSFE']->pSetup['includeCSS.'])) {
@@ -162,8 +162,12 @@ class RenderPreProcessorHook
             // create filename - hash is important due to the possible
             // conflicts with same filename in different folders
             GeneralUtility::mkdir_deep($sitePath . $outputDir);
-            $cssRelativeFilename = $outputDir . $filename . (($outputDir === $defaultOutputDir) ? '_' . hash('sha1',
-                        $file) : (\count($this->variables) > 0 ? '_' . $variablesHash : '')) . '.css';
+            if ($outputFile === null) {
+                $cssRelativeFilename = $outputDir . $filename . (($outputDir === $defaultOutputDir) ? '_' . hash('sha1',
+                            $file) : (\count($this->variables) > 0 ? '_' . $variablesHash : '')) . ((substr($filename,-4) === '.css') ? '' : '.css');
+            } else {
+                $cssRelativeFilename = $outputDir . $filename . ((substr($filename,-4) === '.css') ? '' : '.css');
+            }
             $cssFilename = $sitePath . $cssRelativeFilename;
 
             /** @var FileBackend $cache */
