@@ -5,11 +5,12 @@
     "homepage": "http://wappler.systems",
     "license": "GPL-2.0-or-later",
     "require": {
-        "typo3/cms-core": ">=7.1.0, <9.5.99"
+        "typo3/cms-core": "^9.5 || ^10.4",
+        "php": "^7.2",
+        "scssphp/scssphp": "^1"
     },
     "replace": {
-        "ws_scss": "self.version",
-        "svewap/ws-scss": "self.version"
+        "typo3-ter/ws-scss": "self.version"
     },
     "autoload": {
         "psr-4": {

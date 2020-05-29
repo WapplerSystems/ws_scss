@@ -65,11 +65,11 @@ Formatter
 
 It’s possible to customize the formatting of the output CSS by changing the default formatter.
 
-- Leafo\ScssPhp\Formatter\Expanded
-- Leafo\ScssPhp\Formatter\Nested (default)
-- Leafo\ScssPhp\Formatter\Compressed
-- Leafo\ScssPhp\Formatter\Compact
-- Leafo\ScssPhp\Formatter\Crunched
+- ScssPhp\ScssPhp\Formatter\Expanded
+- ScssPhp\ScssPhp\Formatter\Nested (default)
+- ScssPhp\ScssPhp\Formatter\Compressed
+- ScssPhp\ScssPhp\Formatter\Compact
+- ScssPhp\ScssPhp\Formatter\Crunched
 
 
 ::
@@ -78,7 +78,7 @@ It’s possible to customize the formatting of the output CSS by changing the de
 
        bootstrap = {$plugin.tx_demotemplate.filepaths.scss}bootstrap.scss
        bootstrap.outputdir = {$plugin.tx_demotemplate.filepaths.css}
-       bootstrap.formatter = Leafo\ScssPhp\Formatter\Compressed
+       bootstrap.formatter = ScssPhp\ScssPhp\Formatter\Compressed
    }
 
 

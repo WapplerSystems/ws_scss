@@ -2,16 +2,16 @@
 /**
  * SCSSPHP
  *
- * @copyright 2012-2018 Leaf Corcoran
+ * @copyright 2012-2020 Leaf Corcoran
  *
  * @license http://opensource.org/licenses/MIT MIT
  *
- * @link http://leafo.github.io/scssphp
+ * @link http://scssphp.github.io/scssphp
  */
 
-namespace Leafo\ScssPhp\SourceMap;
+namespace ScssPhp\ScssPhp\SourceMap;
 
-use Leafo\ScssPhp\Exception\CompilerException;
+use ScssPhp\ScssPhp\Exception\CompilerException;
 
 /**
  * Source Map Generator
@@ -61,7 +61,7 @@ class SourceMapGenerator
     /**
      * The base64 VLQ encoder
      *
-     * @var \Leafo\ScssPhp\SourceMap\Base64VLQ
+     * @var \ScssPhp\ScssPhp\SourceMap\Base64VLQ
      */
     protected $encoder;
 
@@ -127,7 +127,7 @@ class SourceMapGenerator
      *
      * @return string
      *
-     * @throws \Leafo\ScssPhp\Exception\CompilerException If the file could not be saved
+     * @throws \ScssPhp\ScssPhp\Exception\CompilerException If the file could not be saved
      */
     public function saveMap($content)
     {
@@ -137,7 +137,9 @@ class SourceMapGenerator
         // directory does not exist
         if (! is_dir($dir)) {
             // FIXME: create the dir automatically?
-            throw new CompilerException(sprintf('The directory "%s" does not exist. Cannot save the source map.', $dir));
+            throw new CompilerException(
+                sprintf('The directory "%s" does not exist. Cannot save the source map.', $dir)
+            );
         }
 
         // FIXME: proper saving, with dir write check!

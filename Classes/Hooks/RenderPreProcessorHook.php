@@ -1,4 +1,5 @@
 <?php
+
 namespace WapplerSystems\WsScss\Hooks;
 
 /***************************************************************
@@ -23,6 +24,7 @@ namespace WapplerSystems\WsScss\Hooks;
 
 use TYPO3\CMS\Core\Cache\Backend\FileBackend;
 use TYPO3\CMS\Core\Cache\CacheManager;
+use TYPO3\CMS\Core\Log\Logger;
 use TYPO3\CMS\Core\Page\PageRenderer;
 use TYPO3\CMS\Core\Utility\DebugUtility;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
@@ -30,6 +32,7 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Log\LogManager;
 use TYPO3\CMS\Core\Utility\VersionNumberUtility;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
+use TYPO3\CMS\Frontend\Resource\FilePathSanitizer;
 
 /**
  * Hook to preprocess scss files
@@ -56,9 +59,11 @@ class RenderPreProcessorHook
      * @param array $params Array of CSS/javascript and other files
      * @param PageRenderer $pagerenderer Pagerenderer object
      * @return void
-     * @throws \BadFunctionCallException
-     * @throws \RuntimeException
-     * @throws \InvalidArgumentException
+     * @throws \TYPO3\CMS\Core\Cache\Exception\NoSuchCacheException
+     * @throws \TYPO3\CMS\Core\Resource\Exception\FileDoesNotExistException
+     * @throws \TYPO3\CMS\Core\Resource\Exception\InvalidFileException
+     * @throws \TYPO3\CMS\Core\Resource\Exception\InvalidFileNameException
+     * @throws \TYPO3\CMS\Core\Resource\Exception\InvalidPathException
      */
     public function renderPreProcessorProc(&$params, PageRenderer $pagerenderer)
     {
@@ -67,9 +72,8 @@ class RenderPreProcessorHook
         }
 
         $defaultOutputDir = 'typo3temp/assets/css/';
-        if (VersionNumberUtility::convertVersionNumberToInteger(VersionNumberUtility::getCurrentTypo3Version()) < VersionNumberUtility::convertVersionNumberToInteger('8.0.0')) {
-            $defaultOutputDir = 'typo3temp/';
-        }
+
+        $sitePath = \TYPO3\CMS\Core\Core\Environment::getPublicPath() . '/';
 
         $setup = $GLOBALS['TSFE']->tmpl->setup;
         if (\is_array($setup['plugin.']['tx_wsscss.']['variables.'])) {
@@ -92,7 +96,9 @@ class RenderPreProcessorHook
             $this->variables = $parsedTypoScriptVariables;
         }
 
-        $variablesHash = \count($this->variables) > 0 ? hash('md5',implode(',', $this->variables)) : null;
+        $variablesHash = \count($this->variables) > 0 ? hash('md5', implode(',', $this->variables)) : null;
+
+        $filePathSanitizer = GeneralUtility::makeInstance(\TYPO3\CMS\Frontend\Resource\FilePathSanitizer::class);
 
         // we need to rebuild the CSS array to keep order of CSS files
         $cssFiles = [];
@@ -111,30 +117,30 @@ class RenderPreProcessorHook
             $formatter = null;
             $showLineNumber = false;
             $useSourceMap = false;
-            $outputFile = '';
-            $dependencies = array();
+			$outputFile = null;
+			$dependencies = array();
 
-            // search settings for scss file
-            foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] as $key => $subconf) {
-                if (\is_string($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) && $GLOBALS['TSFE']->tmpl->getFileName($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) === $file) {
-                    $outputDir = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) : $outputDir;
-                    $outputFile = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) : null;
-                    $formatter = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['formatter']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['formatter']) : null;
-					$dependencies = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['dependencies.']) ? $GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['dependencies.'] : [];
+			if (\is_array($GLOBALS['TSFE']->pSetup['includeCSS.'])) {
+				foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] as $key => $subconf) {
+					if (\is_string($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) && $filePathSanitizer->sanitize($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) === $file) {
+						$outputDir = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) : $outputDir;
+						$outputFile = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) : null;
+						$formatter = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['formatter']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['formatter']) : null;
+						$dependencies = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['dependencies.']) ? $GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['dependencies.'] : [];
+						$showLineNumber = false;
+						if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['linenumber'])) {
+							if ($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['linenumber'] === 'true' || (int)$GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['linenumber'] === 1) {
+								$showLineNumber = true;
+							}
+							$useSourceMap = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['sourceMap']) ? true : false;
 
-                    $showLineNumber = false;
-                    if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['linenumber'])) {
-                        if ($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['linenumber'] === 'true' || (int)$GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['linenumber'] === 1) {
-                            $showLineNumber = true;
-                        }
-                    }
-                    $useSourceMap = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['sourceMap']) ? true : false;
-
-                    if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['inlineOutput'])) {
-                        $inlineOutput = (bool)trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['inlineOutput']);
-                    }
-                }
-            }
+							if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['inlineOutput'])) {
+								$inlineOutput = (bool)trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['inlineOutput']);
+							}
+						}
+					}
+				}
+			}
             if ($outputFile !== null) {
                 $outputDir = \dirname($outputFile);
                 $filename = basename($outputFile);
@@ -146,7 +152,7 @@ class RenderPreProcessorHook
                 [$extKey, $script] = explode('/', substr($outputDir, 4), 2);
                 if ($extKey && ExtensionManagementUtility::isLoaded($extKey)) {
                     $extPath = ExtensionManagementUtility::extPath($extKey);
-                    $outputDir = substr($extPath, \strlen(PATH_site)) . $script;
+                    $outputDir = substr($extPath, \strlen($sitePath)) . $script;
                 }
             }
 
@@ -173,10 +179,14 @@ class RenderPreProcessorHook
 
             // create filename - hash is important due to the possible
             // conflicts with same filename in different folders
-            GeneralUtility::mkdir_deep(PATH_site . $outputDir);
-            $cssRelativeFilename = $outputDir . $filename . (($outputDir === $defaultOutputDir) ? '_' . hash('sha1',
-                        $file) : (\count($this->variables) > 0 ? '_'.$variablesHash : '')) . '.css';
-            $cssFilename = PATH_site . $cssRelativeFilename;
+            GeneralUtility::mkdir_deep($sitePath . $outputDir);
+            if ($outputFile === null) {
+                $cssRelativeFilename = $outputDir . $filename . (($outputDir === $defaultOutputDir) ? '_' . hash('sha1',
+                            $file) : (\count($this->variables) > 0 ? '_' . $variablesHash : '')) . ((substr($filename,-4) === '.css') ? '' : '.css');
+            } else {
+                $cssRelativeFilename = $outputDir . $filename . ((substr($filename,-4) === '.css') ? '' : '.css');
+            }
+            $cssFilename = $sitePath . $cssRelativeFilename;
 
             /** @var FileBackend $cache */
             $cache = GeneralUtility::makeInstance(CacheManager::class)->getCache('ws_scss');
@@ -207,7 +217,7 @@ class RenderPreProcessorHook
             } catch (\Exception $ex) {
                 DebugUtility::debug($ex->getMessage());
 
-                /** @var $logger \TYPO3\CMS\Core\Log\Logger */
+                /** @var $logger Logger */
                 $logger = GeneralUtility::makeInstance(LogManager::class)->getLogger(__CLASS__);
                 $logger->error($ex->getMessage());
             }
@@ -247,21 +257,24 @@ class RenderPreProcessorHook
      */
     protected function compileScss($scssFilename, $cssFilename, $vars = [], $showLineNumber = false, $formatter = null, $cssRelativeFilename = null, $useSourceMap = false, $dependencies = []): string
     {
-		$extPath = ExtensionManagementUtility::extPath('ws_scss');
-		require_once $extPath . 'Resources/Private/scssphp/scss.inc.php';
-
-		$parser = new \Leafo\ScssPhp\Compiler();
+		$sitePath = \TYPO3\CMS\Core\Core\Environment::getPublicPath() . '/';
+		if (!class_exists(\ScssPhp\ScssPhp\Version::class, false)) {
+			$extPath = ExtensionManagementUtility::extPath('ws_scss');
+			require_once $extPath . 'Resources/Private/scssphp/scss.inc.php';
+		}
+		$cacheOptions = [
+			'cacheDir' => $sitePath . 'typo3temp/assets/css/cache/',
+			'prefix' => md5($cssFilename),
+		];
+		$parser = new \ScssPhp\ScssPhp\Compiler($cacheOptions);
 		if (file_exists($scssFilename)) {
-
 			$parser->setVariables($vars);
-
 			if ($showLineNumber) {
 				$parser->setLineNumberStyle(\Leafo\ScssPhp\Compiler::LINE_COMMENTS);
 			}
 			if ($formatter !== null) {
 				$parser->setFormatter($formatter);
 			}
-
 			if ($useSourceMap) {
 				$parser->setSourceMap(\Leafo\ScssPhp\Compiler::SOURCE_MAP_INLINE);
 
@@ -272,7 +285,6 @@ class RenderPreProcessorHook
 					'sourceMapRootpath' => '/',
 				]);
 			}
-
 			$code = '';
 			foreach($dependencies as $dependency){
 				$code .= '@import "'.$dependency.'";'.PHP_EOL;
