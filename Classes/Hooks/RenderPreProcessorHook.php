@@ -305,9 +305,8 @@ class RenderPreProcessorHook
             $hash = hash('sha1', $hash . $vars);
         } // hash variables too
 
-        preg_match_all('/@import "([^"]*)"/', $content, $imports);
-
-        foreach ($imports[1] as $import) {
+        $imports = $this->collectImports($content);
+        foreach ($imports as $import) {
             $hashImport = '';
 
 
@@ -330,5 +329,29 @@ class RenderPreProcessorHook
         return $hash;
     }
 
+    /**
+     * Collect all @import files in the given content.
+     *
+     * @param string $content
+     * @return array
+     */
+    protected function collectImports(string $content): array
+    {
+        $matches = [];
+        $imports = [];
 
+        preg_match_all('/@import([^;]*);/', $content, $matches);
+
+        foreach ($matches[1] as $importString) {
+            $files = explode(',', $importString);
+
+            array_walk($files, function(string &$file) {
+                $file = trim($file, " \t\n\r\0\x0B'\"");
+            });
+
+            $imports = array_merge($imports, $files);
+        }
+
+        return $imports;
+    }
 }
