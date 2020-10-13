@@ -1,3 +1,6 @@
 /.project
 /.settings
 /.idea
+/public/typo3
+/vendor
+composer.lock
