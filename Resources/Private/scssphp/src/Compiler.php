@@ -4724,7 +4724,7 @@ class Compiler
                         substr($dir, -1) !== '/' &&
                         substr($full, 0, 1) !== '/'
                     ) ? '/' : '';
-                    $full = $dir . $separator . $full;
+                    $full = realpath($dir . $separator . $full);
 
                     if (is_file($file = $full)) {
                         return $file;
