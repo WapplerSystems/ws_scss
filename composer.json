@@ -16,5 +16,10 @@
         "psr-4": {
             "WapplerSystems\\WsScss\\": "Classes/"
         }
+    },
+    "extra": {
+        "typo3-cms": {
+            "extension-key": "ws_scss"
+        }
     }
 }
