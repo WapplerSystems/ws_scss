@@ -14,34 +14,25 @@ $EM_CONF['ws_scss'] = [
     'title' => 'SASS compiler for TYPO3',
     'description' => 'Compiles scss files to CSS files.',
     'category' => 'fe',
-    'shy' => 0,
-    'version' => '1.1.24',
-    'dependencies' => '',
-    'conflicts' => '',
-    'priority' => '',
-    'loadOrder' => '',
-    'module' => '',
-    'state' => 'stable',
-    'uploadfolder' => 0,
-    'createDirs' => '',
-    'modify_tables' => '',
-    'clearcacheonload' => 0,
-    'lockType' => '',
     'author' => 'Sven Wappler',
     'author_email' => 'typo3YYYY@wappler.systems',
     'author_company' => 'WapplerSystems',
-    'CGLcompliance' => '',
-    'CGLcompliance_note' => '',
+    'version' => '2.0.0',
+    'state' => 'alpha',
+    'clearCacheOnLoad' => false,
     'constraints' => [
         'depends' => [
-            'php' => '7.2.0-7.4.99',
-            'typo3' => '9.5.0-11.1.99',
+            'php' => '7.4.0-7.4.99',
+            'typo3' => '10.4.0-11.1.99',
         ],
         'conflicts' => [
         ],
         'suggests' => [
         ],
     ],
-    'suggests' => [
-    ],
+    'autoload' => [
+        'psr-4' => [
+            'WapplerSystems\\WsScss\\' => 'Classes'
+        ]
+    ]
 ];
