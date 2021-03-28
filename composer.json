@@ -4,6 +4,12 @@
     "type": "typo3-cms-extension",
     "homepage": "http://wappler.systems",
     "license": "GPL-2.0-or-later",
+    "keywords": [
+        "TYPO3",
+        "extension",
+        "scss",
+        "sass"
+    ],
     "require": {
         "typo3/cms-core": "^9.5 || ^10.4 || ^11",
         "php": "^7.2",
@@ -21,5 +27,12 @@
         "typo3-cms": {
             "extension-key": "ws_scss"
         }
-    }
+    },
+    "authors": [
+        {
+            "name": "Sven Wappler",
+            "role": "Developer",
+            "homepage": "https://wappler.systems"
+        }
+    ]
 }
