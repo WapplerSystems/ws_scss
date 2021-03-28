@@ -36,7 +36,7 @@ class Autoprefixer extends Formatter
         $this->assignSeparator = ':';
         $this->keepSemicolons = false;
 
-        if (!class_exists(\CssCrush\Version::class, false)) {
+        if (!class_exists(\CssCrush\Version::class, true)) {
             $extPath = ExtensionManagementUtility::extPath('ws_scss');
             require_once $extPath . 'Resources/Private/csscrush/CssCrush.php';
         }

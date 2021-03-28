@@ -239,13 +239,24 @@ class RenderPreProcessorHook
     {
 
         $sitePath = \TYPO3\CMS\Core\Core\Environment::getPublicPath() . '/';
-        if (!class_exists(\ScssPhp\ScssPhp\Version::class, false)) {
+        if (!class_exists(\ScssPhp\ScssPhp\Version::class, true)) {
             $extPath = ExtensionManagementUtility::extPath('ws_scss');
             require_once $extPath . 'Resources/Private/scssphp/scss.inc.php';
         }
 
+        $cacheDir = $sitePath . 'typo3temp/assets/css/cache/';
+
+        if (!is_dir($cacheDir)) {
+            GeneralUtility::mkdir_deep($cacheDir);
+        }
+
+        if (!is_writable($cacheDir)) {
+            // TODO: Error message
+            return '';
+        }
+
         $cacheOptions = [
-            'cacheDir' => $sitePath . 'typo3temp/assets/css/cache/',
+            'cacheDir' => $cacheDir,
             'prefix' => md5($cssFilename),
         ];
         $parser = new \ScssPhp\ScssPhp\Compiler($cacheOptions);
