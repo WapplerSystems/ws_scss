@@ -148,11 +148,11 @@ class Importer
         // Save only if caching is on and the hostfile object is associated with a real file.
         if ($input->path && $options->cache) {
 
-            $process->cacheData[$process->output->filename] = array(
+            $process->cacheData[$process->output->filename] = [
                 'imports' => $filenames,
                 'datem_sum' => array_sum($mtimes) + $input->mtime,
                 'options' => $options->get(),
-            );
+            ];
             $process->io->saveCacheData();
         }
 
@@ -316,11 +316,11 @@ class Importer
                 $line = substr_count($before, "\n");
             }
 
-            $pointData = array($currentFileIndex, $line);
+            $pointData = [$currentFileIndex, $line];
 
             // Source maps require column index too.
             if ($process->generateMap) {
-                $pointData[] = strlen($before) - strrpos($before, "\n") - 1;
+                $pointData[] = strlen($before) - (strrpos($before, "\n") ?: 0);
             }
 
             // Splice in marker token (packing point_data into string is more memory efficient).
@@ -361,6 +361,12 @@ class Importer
                 if ($fullMatch[0] !== $fullMatch[strlen($fullMatch)-1]) {
                     $fullMatch .= $fullMatch[0];
                 }
+
+                // Backticked literals may have been used for custom property values.
+                if ($fullMatch[0] === '`') {
+                    $fullMatch = preg_replace('~\x5c`~', '`', trim($fullMatch, '`'));
+                }
+
                 $label = $process->tokens->add($fullMatch, 's');
             }
 

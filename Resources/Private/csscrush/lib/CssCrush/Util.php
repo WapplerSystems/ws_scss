@@ -116,14 +116,14 @@ class Util
     {
         static $find, $replace;
         if (! $find) {
-            $replacements = array(
+            $replacements = [
                 // Convert all whitespace sequences to a single space.
                 '~\s+~S' => ' ',
                 // Trim bracket whitespace where it's safe to do it.
                 '~([\[(]) | ([\])])| ?([{}]) ?~S' => '${1}${2}${3}',
                 // Trim whitespace around delimiters and special characters.
                 '~ ?([;,]) ?~S' => '$1',
-            );
+            ];
             $find = array_keys($replacements);
             $replace = array_values($replacements);
         }
@@ -133,16 +133,16 @@ class Util
 
     public static function splitDelimList($str, $options = [])
     {
-        extract($options + array(
+        extract($options + [
             'delim' => ',',
             'regex' => false,
             'allow_empty_strings' => false,
-        ));
+        ]);
 
         $str = trim($str);
 
         if (! $regex && strpos($str, $delim) === false) {
-            return ! $allow_empty_strings && ! strlen($str) ? [] : array($str);
+            return ! $allow_empty_strings && ! strlen($str) ? [] : [$str];
         }
 
         if ($match_count = preg_match_all(Regex::$patt->parens, $str, $matches)) {
@@ -263,12 +263,12 @@ class Util
 
         $encoded = "";
         do {
-          $digit = $vlq & $VLQ_BASE_MASK;
-          $vlq >>= $VLQ_BASE_SHIFT;
-          if ($vlq > 0) {
-            $digit |= $VLQ_CONTINUATION_BIT;
-          }
-          $encoded .= $BASE64_MAP[$digit];
+            $digit = $vlq & $VLQ_BASE_MASK;
+            $vlq >>= $VLQ_BASE_SHIFT;
+            if ($vlq > 0) {
+                $digit |= $VLQ_CONTINUATION_BIT;
+            }
+            $encoded .= $BASE64_MAP[$digit];
 
         } while ($vlq > 0);
 

@@ -26,7 +26,6 @@ class Process
         $this->sources = [];
         $this->vars = [];
         $this->plugins = [];
-        $this->settings = [];
         $this->misc = new \stdClass();
         $this->input = new \stdClass();
         $this->output = new \stdClass();
@@ -408,12 +407,12 @@ class Process
         if (! $varFunction) {
             $varFunctionSimple = Regex::make('~\$\( \s* ({{ ident }}) \s* \)~xS');
             $varFunction = new Functions(['$' => function ($rawArgs) {
-                list($name, $defaultValue) = Functions::parseArgsSimple($rawArgs);
-                if (isset(Crush::$process->vars[$name])) {
-                    return Crush::$process->vars[$name];
+                $args = Functions::parseArgsSimple($rawArgs);
+                if (isset(Crush::$process->vars[$args[0]])) {
+                    return Crush::$process->vars[$args[0]];
                 }
                 else {
-                    return $defaultValue;
+                    return isset($args[1]) ? $args[1] : '';
                 }
             }]);
         }
@@ -438,22 +437,6 @@ class Process
 
         // If we know replacements have been made we may want to update $value. e.g URL tokens.
         return $varsPlaced;
-    }
-
-
-    #############################
-    #  @settings blocks.
-
-    protected function resolveSettings()
-    {
-        $captured_settings = $this->string->captureDirectives('settings', ['singles' => true]);
-        $combined_settings = $this->options->settings + $captured_settings;
-
-        foreach ($combined_settings as &$value) {
-            $this->placeVars($value);
-        }
-
-        $this->settings = new Settings($combined_settings);
     }
 
     #############################
@@ -959,20 +942,18 @@ class Process
         $importer = new Importer($this);
         $this->string = new StringObject($importer->collate());
 
-        // Capture phase 0 hook: Before all variables and settings have resolved.
+        // Capture phase 0 hook: Before all variables have resolved.
         $this->emit('capture_phase0', $this);
 
         $this->captureVars();
 
         $this->resolveIfDefines();
 
-        $this->resolveSettings();
-
         $this->resolveLoops();
 
         $this->placeAllVars();
 
-        // Capture phase 1 hook: After all variables and settings have resolved.
+        // Capture phase 1 hook: After all variables have resolved.
         $this->emit('capture_phase1', $this);
 
         $this->resolveSelectorAliases();
@@ -1102,7 +1083,7 @@ class Process
         $minified_keywords = Color::getMinifyableKeywords();
 
         if (! $keywords_patt) {
-            $keywords_patt = '~(?<![\w-\.#])(' . implode('|', array_keys($minified_keywords)) . ')(?![\w-\.#\]])~iS';
+            $keywords_patt = '~(?<![\w\.#-])(' . implode('|', array_keys($minified_keywords)) . ')(?![\w\.#\]-])~iS';
             $functions_patt = Regex::make('~{{ LB }}(rgb|hsl)\(([^\)]{5,})\)~iS');
         }
 
