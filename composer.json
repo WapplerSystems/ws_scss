@@ -13,7 +13,8 @@
     "require": {
         "typo3/cms-core": "^9.5 || ^10.4 || ^11",
         "php": "^7.2",
-        "scssphp/scssphp": "^1"
+        "scssphp/scssphp": "^1",
+        "css-crush/css-crush": "^3"
     },
     "replace": {
         "typo3-ter/ws-scss": "self.version"
