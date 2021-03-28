@@ -13,6 +13,7 @@ namespace WapplerSystems\WsScss\Formatter;
 
 use ScssPhp\ScssPhp\Formatter;
 use ScssPhp\ScssPhp\Formatter\OutputBlock;
+use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 
 /**
  * Debug formatter
@@ -34,6 +35,11 @@ class Autoprefixer extends Formatter
         $this->tagSeparator = ',';
         $this->assignSeparator = ':';
         $this->keepSemicolons = false;
+
+        if (!class_exists(\CssCrush\Version::class, false)) {
+            $extPath = ExtensionManagementUtility::extPath('ws_scss');
+            require_once $extPath . 'Resources/Private/csscrush/CssCrush.php';
+        }
     }
 
     /**
@@ -46,8 +52,6 @@ class Autoprefixer extends Formatter
         $glue = $this->break . $inner;
 
         foreach ($block->lines as $index => $line) {
-
-            require_once __DIR__ . '/../../Resources/Private/csscrush/CssCrush.php';
 
             $line = csscrush_string('.crushwrapper {'.$line.'}',['minify' => true,'boilerplate' => false, 'formatter' => 'single-line', 'versioning' => false]);
             $line = str_replace(['.crushwrapper {','}'],[''],$line);
