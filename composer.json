@@ -25,7 +25,7 @@
         }
     },
     "extra": {
-        "typo3-cms": {
+        "typo3/cms": {
             "extension-key": "ws_scss"
         }
     },
