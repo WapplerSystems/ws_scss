@@ -25,11 +25,11 @@ namespace WapplerSystems\WsScss\Hooks;
 use TYPO3\CMS\Core\Cache\Backend\FileBackend;
 use TYPO3\CMS\Core\Cache\CacheManager;
 use TYPO3\CMS\Core\Log\Logger;
+use TYPO3\CMS\Core\Log\LogManager;
 use TYPO3\CMS\Core\Page\PageRenderer;
 use TYPO3\CMS\Core\Utility\DebugUtility;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Core\Log\LogManager;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 
 /**
@@ -195,7 +195,9 @@ class RenderPreProcessorHook
                     $cache->set($cacheKey, $contentHash, ['scss'], 0);
                 }
             } catch (\Exception $ex) {
-                DebugUtility::debug($ex->getMessage());
+                if(!GeneralUtility::getApplicationContext()->isProduction()) {
+                    DebugUtility::debug($ex->getMessage());
+                }
 
                 /** @var $logger Logger */
                 $logger = GeneralUtility::makeInstance(LogManager::class)->getLogger(__CLASS__);
