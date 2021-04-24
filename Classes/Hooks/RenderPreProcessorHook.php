@@ -22,15 +22,8 @@ namespace WapplerSystems\WsScss\Hooks;
  *  This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
 
-use TYPO3\CMS\Core\Cache\Backend\FileBackend;
-use TYPO3\CMS\Core\Cache\CacheManager;
-use TYPO3\CMS\Core\Core\Environment;
-use TYPO3\CMS\Core\Log\Logger;
 use TYPO3\CMS\Core\Page\PageRenderer;
-use TYPO3\CMS\Core\Utility\DebugUtility;
-use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Core\Log\LogManager;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 use WapplerSystems\WsScss\Compiler\ScssResolver;
 
@@ -44,9 +37,7 @@ use WapplerSystems\WsScss\Compiler\ScssResolver;
 class RenderPreProcessorHook
 {
 
-    private static $visitedFiles = [];
 
-    private $variables = [];
 
     /**
      * @var \TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer

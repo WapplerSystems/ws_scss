@@ -32,15 +32,25 @@ class ScssCompiler
         $cssRelativeFilename = null,
         bool $useSourceMap = false): string {
 
-        $sitePath = Environment::getPublicPath() . '/';
-
-        if (!class_exists(\ScssPhp\ScssPhp\Version::class, false)) {
+        if (!class_exists(\ScssPhp\ScssPhp\Version::class, true)) {
             $extPath = ExtensionManagementUtility::extPath('ws_scss');
             require_once $extPath . 'Resources/Private/scssphp/scss.inc.php';
         }
+        $sitePath = Environment::getPublicPath() . '/';
+
+        $cacheDir = $sitePath . 'typo3temp/assets/css/cache/';
+
+        if (!is_dir($cacheDir)) {
+            GeneralUtility::mkdir_deep($cacheDir);
+        }
+
+        if (!is_writable($cacheDir)) {
+            // TODO: Error message
+            return '';
+        }
 
         $cacheOptions = [
-            'cacheDir' => $sitePath . 'typo3temp/assets/css/cache/',
+            'cacheDir' => $cacheDir,
             'prefix' => md5($cssFilename),
         ];
         GeneralUtility::mkdir_deep($cacheOptions['cacheDir']);
