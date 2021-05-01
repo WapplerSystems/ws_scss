@@ -1,0 +1,23 @@
+services:
+  cache.ws_scss:
+    class: TYPO3\CMS\Core\Cache\Frontend\FrontendInterface
+    factory: [ '@TYPO3\CMS\Core\Cache\CacheManager', 'getCache' ]
+    arguments: [ 'ws_scss' ]
+
+  _defaults:
+    autowire: true
+    autoconfigure: true
+    public: true
+
+  WapplerSystems\WsScss\:
+    resource: '../Classes/*'
+
+  WapplerSystems\WsScss\EventListener\CompileScssAssets:
+    tags:
+      - name: event.listener
+        identifier: 'ws-sass/compileScssListener'
+        event: TYPO3\CMS\Core\Page\Event\BeforeStylesheetsRenderingEvent
+
+  WapplerSystems\WsScss\Compiler\ScssResolver:
+    arguments:
+      $cache: '@cache.ws_scss'

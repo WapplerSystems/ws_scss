@@ -22,15 +22,10 @@ namespace WapplerSystems\WsScss\Hooks;
  *  This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
 
-use TYPO3\CMS\Core\Cache\Backend\FileBackend;
-use TYPO3\CMS\Core\Cache\CacheManager;
-use TYPO3\CMS\Core\Log\Logger;
 use TYPO3\CMS\Core\Page\PageRenderer;
-use TYPO3\CMS\Core\Utility\DebugUtility;
-use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Core\Log\LogManager;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
+use WapplerSystems\WsScss\Compiler\ScssResolver;
 
 /**
  * Hook to preprocess scss files
@@ -42,9 +37,7 @@ use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 class RenderPreProcessorHook
 {
 
-    private static $visitedFiles = [];
 
-    private $variables = [];
 
     /**
      * @var \TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer
@@ -70,8 +63,7 @@ class RenderPreProcessorHook
         }
 
         $defaultOutputDir = 'typo3temp/assets/css/';
-
-        $sitePath = \TYPO3\CMS\Core\Core\Environment::getPublicPath() . '/';
+        $variables = [];
 
         $setup = $GLOBALS['TSFE']->tmpl->setup;
         if (\is_array($setup['plugin.']['tx_wsscss.']['variables.'])) {
@@ -94,8 +86,6 @@ class RenderPreProcessorHook
             $this->variables = $parsedTypoScriptVariables;
         }
 
-        $variablesHash = \count($this->variables) > 0 ? hash('md5', implode(',', $this->variables)) : null;
-
         $filePathSanitizer = GeneralUtility::makeInstance(\TYPO3\CMS\Frontend\Resource\FilePathSanitizer::class);
 
         // we need to rebuild the CSS array to keep order of CSS files
@@ -111,7 +101,6 @@ class RenderPreProcessorHook
             $outputDir = $defaultOutputDir;
 
             $inlineOutput = false;
-            $filename = $pathInfo['filename'];
             $formatter = null;
             $showLineNumber = false;
             $useSourceMap = false;
@@ -139,78 +128,24 @@ class RenderPreProcessorHook
                     }
                 }
             }
-            if ($outputFile !== null) {
-                $outputDir = \dirname($outputFile);
-                $filename = basename($outputFile);
+
+            /** @var ScssResolver $scssResolver */
+            $scssResolver = GeneralUtility::makeInstance(ScssResolver::class);
+            $resolved = $scssResolver->resolve($conf['file'], $outputDir, $formatter, $variables,  $showLineNumber, $useSourceMap, $outputFile, $inlineOutput);
+
+            if ($resolved === null) {
+                // error in compiling
+                // TODO unset all
             }
 
-            $outputDir = (substr($outputDir, -1) === '/') ? $outputDir : $outputDir . '/';
+            $cssRelativeFilename = $resolved[0];
 
-            if (!strcmp(substr($outputDir, 0, 4), 'EXT:')) {
-                [$extKey, $script] = explode('/', substr($outputDir, 4), 2);
-                if ($extKey && ExtensionManagementUtility::isLoaded($extKey)) {
-                    $extPath = ExtensionManagementUtility::extPath($extKey);
-                    $outputDir = substr($extPath, \strlen($sitePath)) . $script;
-                }
-            }
-
-
-            $scssFilename = GeneralUtility::getFileAbsFileName($conf['file']);
-
-            // create filename - hash is important due to the possible
-            // conflicts with same filename in different folders
-            GeneralUtility::mkdir_deep($sitePath . $outputDir);
-            if ($outputFile === null) {
-                $cssRelativeFilename = $outputDir . $filename . (($outputDir === $defaultOutputDir) ? '_' . hash('sha1',
-                            $file) : (\count($this->variables) > 0 ? '_' . $variablesHash : '')) . ((substr($filename,-4) === '.css') ? '' : '.css');
-            } else {
-                $cssRelativeFilename = $outputDir . $filename . ((substr($filename,-4) === '.css') ? '' : '.css');
-            }
-            $cssFilename = $sitePath . $cssRelativeFilename;
-
-            /** @var FileBackend $cache */
-            $cache = GeneralUtility::makeInstance(CacheManager::class)->getCache('ws_scss');
-
-            $cacheKey = hash('sha1', $cssRelativeFilename);
-            $contentHash = $this->calculateContentHash($scssFilename, implode(',', $this->variables));
-            if ($showLineNumber) {
-                $contentHash .= 'l1';
-            }
-            if ($useSourceMap) {
-                $contentHash .= 'sm';
-            }
-            $contentHash .= $formatter;
-
-            $contentHashCache = '';
-            if ($cache->has($cacheKey)) {
-                $contentHashCache = $cache->get($cacheKey);
-            }
-
-            $css = '';
-
-            try {
-                if ($contentHashCache === '' || $contentHashCache !== $contentHash) {
-                    $css = $this->compileScss($scssFilename, $cssFilename, $this->variables, $showLineNumber, $formatter, $cssRelativeFilename, $useSourceMap);
-
-                    $cache->set($cacheKey, $contentHash, ['scss'], 0);
-                }
-            } catch (\Exception $ex) {
-                DebugUtility::debug($ex->getMessage());
-
-                /** @var $logger Logger */
-                $logger = GeneralUtility::makeInstance(LogManager::class)->getLogger(__CLASS__);
-                $logger->error($ex->getMessage());
-            }
 
             if ($inlineOutput) {
                 unset($cssFiles[$cssRelativeFilename]);
-                if ($css === '') {
-                    $css = file_get_contents($cssFilename);
-                }
-
                 // TODO: compression
                 $params['cssInline'][$cssRelativeFilename] = [
-                    'code' => $css,
+                    'code' => $cssRelativeFilename[1],
                 ];
             } else {
                 $cssFiles[$cssRelativeFilename] = $params['cssFiles'][$file];
@@ -220,147 +155,5 @@ class RenderPreProcessorHook
 
         }
         $params['cssFiles'] = $cssFiles;
-    }
-
-    /**
-     * Compiling Scss with scss
-     *
-     * @param string $scssFilename Existing scss file absolute path
-     * @param string $cssFilename File to be written with compiled CSS
-     * @param array $vars Variables to compile
-     * @param boolean $showLineNumber Show line numbers
-     * @param string $formatter name
-     * @param string $cssRelativeFilename
-     * @param boolean $useSourceMap Use SourceMap
-     * @return string
-     * @throws \BadFunctionCallException
-     */
-    protected function compileScss($scssFilename, $cssFilename, $vars = [], $showLineNumber = false, $formatter = null, $cssRelativeFilename = null, $useSourceMap = false): string
-    {
-
-        $sitePath = \TYPO3\CMS\Core\Core\Environment::getPublicPath() . '/';
-        if (!class_exists(\ScssPhp\ScssPhp\Version::class, true)) {
-            $extPath = ExtensionManagementUtility::extPath('ws_scss');
-            require_once $extPath . 'Resources/Private/scssphp/scss.inc.php';
-        }
-
-        $cacheDir = $sitePath . 'typo3temp/assets/css/cache/';
-
-        if (!is_dir($cacheDir)) {
-            GeneralUtility::mkdir_deep($cacheDir);
-        }
-
-        if (!is_writable($cacheDir)) {
-            // TODO: Error message
-            return '';
-        }
-
-        $cacheOptions = [
-            'cacheDir' => $cacheDir,
-            'prefix' => md5($cssFilename),
-        ];
-        $parser = new \ScssPhp\ScssPhp\Compiler($cacheOptions);
-        if (file_exists($scssFilename)) {
-
-            $parser->setVariables($vars);
-
-            if ($showLineNumber) {
-                $parser->setLineNumberStyle(\ScssPhp\ScssPhp\Compiler::LINE_COMMENTS);
-            }
-            if ($formatter !== null) {
-                $parser->setFormatter($formatter);
-            }
-
-            if ($useSourceMap) {
-                $parser->setSourceMap(\ScssPhp\ScssPhp\Compiler::SOURCE_MAP_INLINE);
-
-                $parser->setSourceMapOptions([
-                    'sourceMapWriteTo' => $cssFilename . '.map',
-                    'sourceMapURL' => $cssRelativeFilename . '.map',
-                    'sourceMapBasepath' => $sitePath,
-                    'sourceMapRootpath' => '/',
-                ]);
-            }
-
-            $css = $parser->compile('@import "' . $scssFilename . '";');
-
-            GeneralUtility::writeFile($cssFilename, $css);
-
-            return $css;
-        }
-
-        return '';
-    }
-
-    /**
-     * Calculating content hash to detect changes
-     *
-     * @param string $scssFilename Existing scss file absolute path
-     * @param string $vars
-     * @return string
-     */
-    protected function calculateContentHash($scssFilename, $vars = ''): string
-    {
-        if (\in_array($scssFilename, self::$visitedFiles, true)) {
-            return '';
-        }
-        self::$visitedFiles[] = $scssFilename;
-
-        $content = file_get_contents($scssFilename);
-        $pathinfo = pathinfo($scssFilename);
-
-        $hash = hash('sha1', $content);
-        if ($vars !== '') {
-            $hash = hash('sha1', $hash . $vars);
-        } // hash variables too
-
-        $imports = $this->collectImports($content);
-        foreach ($imports as $import) {
-            $hashImport = '';
-
-
-            if (file_exists($pathinfo['dirname'] . '/' . $import . '.scss')) {
-                $hashImport = $this->calculateContentHash($pathinfo['dirname'] . '/' . $import . '.scss');
-            } else {
-                $parts = explode('/', $import);
-                $filename = '_' . array_pop($parts);
-                $parts[] = $filename;
-                if (file_exists($pathinfo['dirname'] . '/' . implode('/', $parts) . '.scss')) {
-                    $hashImport = $this->calculateContentHash($pathinfo['dirname'] . '/' . implode('/',
-                            $parts) . '.scss');
-                }
-            }
-            if ($hashImport !== '') {
-                $hash = hash('sha1', $hash . $hashImport);
-            }
-        }
-
-        return $hash;
-    }
-
-    /**
-     * Collect all @import files in the given content.
-     *
-     * @param string $content
-     * @return array
-     */
-    protected function collectImports(string $content): array
-    {
-        $matches = [];
-        $imports = [];
-
-        preg_match_all('/@import([^;]*);/', $content, $matches);
-
-        foreach ($matches[1] as $importString) {
-            $files = explode(',', $importString);
-
-            array_walk($files, function(string &$file) {
-                $file = trim($file, " \t\n\r\0\x0B'\"");
-            });
-
-            $imports = array_merge($imports, $files);
-        }
-
-        return $imports;
     }
 }
