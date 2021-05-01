@@ -17,7 +17,7 @@ $EM_CONF['ws_scss'] = [
     'author' => 'Sven Wappler',
     'author_email' => 'typo3YYYY@wappler.systems',
     'author_company' => 'WapplerSystems',
-    'version' => '2.0.0',
+    'version' => '1.2.0',
     'state' => 'alpha',
     'clearCacheOnLoad' => false,
     'constraints' => [
@@ -32,7 +32,8 @@ $EM_CONF['ws_scss'] = [
     ],
     'autoload' => [
         'psr-4' => [
-            'WapplerSystems\\WsScss\\' => 'Classes'
+            'WapplerSystems\\WsScss\\' => 'Classes',
+            'ScssPhp\\ScssPhp\\' => 'Resources/Private/scssphp/src/'
         ]
     ]
 ];
