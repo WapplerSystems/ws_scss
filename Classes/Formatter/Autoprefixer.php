@@ -55,7 +55,7 @@ class Autoprefixer extends Formatter
 
             $line = csscrush_string('.crushwrapper {'.$line.'}',['minify' => true,'boilerplate' => false, 'formatter' => 'single-line', 'versioning' => false]);
             $line = str_replace(['.crushwrapper {','}'],[''],$line);
-            $line = preg_replace( "/\r|\n/", "", $line );
+            $line = preg_replace('/\r|\n/', '', $line );
 
             if (0 === strpos($line, '/*') && $line[2] !== '!') {
                 unset($block->lines[$index]);
