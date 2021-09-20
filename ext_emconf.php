@@ -15,7 +15,7 @@ $EM_CONF['ws_scss'] = [
     'description' => 'Compiles scss files to CSS files.',
     'category' => 'fe',
     'shy' => 0,
-    'version' => '1.1.26',
+    'version' => '2.0.0-beta',
     'dependencies' => '',
     'conflicts' => '',
     'priority' => '',
@@ -35,7 +35,7 @@ $EM_CONF['ws_scss'] = [
     'constraints' => [
         'depends' => [
             'php' => '7.2.0-7.4.99',
-            'typo3' => '9.5.0-11.2.99',
+            'typo3' => '9.5.0-11.5.99',
         ],
         'conflicts' => [
         ],
