@@ -30,7 +30,9 @@ use TYPO3\CMS\Core\Utility\DebugUtility;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Log\LogManager;
+use TYPO3\CMS\Core\Utility\VersionNumberUtility;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
+use TYPO3\CMS\Frontend\Resource\FilePathSanitizer;
 
 /**
  * Hook to preprocess scss files
@@ -50,6 +52,12 @@ class RenderPreProcessorHook
      * @var \TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer
      */
     private $contentObjectRenderer;
+
+    /**
+     * @var FilePathSanitizer
+     */
+    private $filePathSanitizer;
+
 
     /**
      * Main hook function
@@ -96,8 +104,6 @@ class RenderPreProcessorHook
 
         $variablesHash = \count($this->variables) > 0 ? hash('md5', implode(',', $this->variables)) : null;
 
-        $filePathSanitizer = GeneralUtility::makeInstance(\TYPO3\CMS\Frontend\Resource\FilePathSanitizer::class);
-
         // we need to rebuild the CSS array to keep order of CSS files
         $cssFiles = [];
         foreach ($params['cssFiles'] as $file => $conf) {
@@ -121,7 +127,7 @@ class RenderPreProcessorHook
             if (\is_array($GLOBALS['TSFE']->pSetup['includeCSS.'])) {
                 foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] as $key => $subconf) {
 
-                    if (\is_string($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) && trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) !== '' && $filePathSanitizer->sanitize($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) === $file) {
+                    if (\is_string($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) && trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) !== '' && $this->sanitizeFilePath($GLOBALS['TSFE']->pSetup['includeCSS.'][$key], $file)) {
                         $outputDir = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) : $outputDir;
                         $outputFile = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) : null;
                         $formatter = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['formatter']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['formatter']) : null;
@@ -363,4 +369,25 @@ class RenderPreProcessorHook
 
         return $imports;
     }
+
+    /**
+     * @param $file
+     * @param $cssFile
+     * @return mixed
+     * @throws \TYPO3\CMS\Core\Resource\Exception\FileDoesNotExistException
+     * @throws \TYPO3\CMS\Core\Resource\Exception\InvalidFileException
+     * @throws \TYPO3\CMS\Core\Resource\Exception\InvalidFileNameException
+     * @throws \TYPO3\CMS\Core\Resource\Exception\InvalidPathException
+     */
+    protected function sanitizeFilePath($file, $cssFile)
+    {
+        if($this->filePathSanitizer === null ){
+            $this->filePathSanitizer = GeneralUtility::makeInstance(FilePathSanitizer::class);
+        }
+        if(VersionNumberUtility::convertVersionNumberToInteger(VersionNumberUtility::getNumericTypo3Version()) < 11005001){
+            return $this->filePathSanitizer->sanitize($file) === $cssFile;
+        }
+        return $this->filePathSanitizer->sanitize($file, true) === $cssFile;
+    }
+
 }
