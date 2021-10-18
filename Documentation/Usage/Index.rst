@@ -25,7 +25,7 @@ Use the includeCSS command and define the output dir:
    page.includeCSS {
    
      bootstrap = fileadmin/bootstrap/sass/bootstrap.scss
-     bootstrap.outputdir = fileadmin/bootstrap/css/
+     bootstrap.outputdir = typo3temp/assets/css/
    
    }
 
@@ -38,7 +38,7 @@ Another way is to define the output file
 
    page.includeCSS {
 
-     bootstrap = fileadmin/bootstrap/sass/bootstrap.scss
+     bootstrap = EXT:sitepackage/Resources/Private/SCSS/bootstrap.scss
      bootstrap.outputfile = fileadmin/bootstrap/css/mybootstrap.css
 
    }
@@ -63,37 +63,36 @@ If you combine *outputfile* and variables you can create different bootstrap sty
 Formatter
 ---------
 
-It’s possible to customize the formatting of the output CSS by changing the default formatter.
+Formatters are deprecated by the scssphp compiler and not supported anymore.
 
-- ScssPhp\ScssPhp\Formatter\Expanded
-- ScssPhp\ScssPhp\Formatter\Nested (default)
-- ScssPhp\ScssPhp\Formatter\Compressed
-- ScssPhp\ScssPhp\Formatter\Compact
-- ScssPhp\ScssPhp\Formatter\Crunched
+
+OutputStyle
+-----------
+
+The following values are possible:
+
+- compressed (default)
+- expanded
 
 
 ::
 
    page.includeCSS {
-
-       bootstrap = {$plugin.tx_demotemplate.filepaths.scss}bootstrap.scss
-       bootstrap.outputdir = {$plugin.tx_demotemplate.filepaths.css}
-       bootstrap.formatter = ScssPhp\ScssPhp\Formatter\Compressed
+       bootstrap = EXT:sitepackage/Resources/Private/SCSS/bootstrap.scss
+       bootstrap.outputStyle = expanded
    }
 
 
 Debugging
 ---------
 
-You can output the original SCSS line numbers within the compiled CSS file for better frontend debugging.
+You can use a source map.
 
 ::
 
    page.includeCSS {
-
-       bootstrap = {$plugin.tx_demotemplate.filepaths.scss}bootstrap.scss
-       bootstrap.outputdir = {$plugin.tx_demotemplate.filepaths.css}
-       bootstrap.linenumber = true
+       bootstrap = EXT:sitepackage/Resources/Private/SCSS/bootstrap.scss
+       bootstrap.sourceMap = true
    }
 
 
@@ -108,7 +107,7 @@ changes. Go into your backend user settings and use this command:
 Credits
 -------
 
-Sven Wappler. `TYPO3 Agentur Aachen <http://www.wapplersystems.de/>`_
+Sven Wappler. `TYPO3 Agentur Aachen <https://wappler.systems/>`_
 
 
 
