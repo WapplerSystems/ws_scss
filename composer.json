@@ -11,13 +11,11 @@
         "sass"
     ],
     "require": {
-        "typo3/cms-core": "^9.5 || ^10.4 || ^11",
-        "php": "^7.2",
-        "scssphp/scssphp": "^1",
-        "css-crush/css-crush": "^3"
+        "typo3/cms-core": "^11",
+        "php": "^7.4 || ^8.0",
+        "scssphp/scssphp": "^1"
     },
     "replace": {
-        "typo3-ter/ws-scss": "self.version"
     },
     "autoload": {
         "psr-4": {
