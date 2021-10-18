@@ -96,8 +96,6 @@ class RenderPreProcessorHook
 
         $variablesHash = \count($this->variables) > 0 ? hash('md5', implode(',', $this->variables)) : null;
 
-        $filePathSanitizer = GeneralUtility::makeInstance(\TYPO3\CMS\Frontend\Resource\FilePathSanitizer::class);
-
         // we need to rebuild the CSS array to keep order of CSS files
         $cssFiles = [];
         foreach ($params['cssFiles'] as $file => $conf) {
@@ -113,28 +111,26 @@ class RenderPreProcessorHook
             $inlineOutput = false;
             $filename = $pathInfo['filename'];
             $formatter = null;
-            $showLineNumber = false;
             $useSourceMap = false;
             $outputFile = null;
 
             // search settings for scss file
-            if (\is_array($GLOBALS['TSFE']->pSetup['includeCSS.'])) {
-                foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] as $key => $subconf) {
+            if (\is_array($GLOBALS['TSFE']->pSetup['includeCSS.'] ?? [])) {
+                foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] as $key => $keyValue) {
+                    if (substr($key,-1) === '.') {
+                        continue;
+                    }
 
-                    if (\is_string($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) && trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) !== '' && $filePathSanitizer->sanitize($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) === $file) {
-                        $outputDir = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) : $outputDir;
-                        $outputFile = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) : null;
-                        $formatter = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['formatter']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['formatter']) : null;
-                        $showLineNumber = false;
-                        if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['linenumber'])) {
-                            if ($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['linenumber'] === 'true' || (int)$GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['linenumber'] === 1) {
-                                $showLineNumber = true;
-                            }
-                            $useSourceMap = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['sourceMap']) ? true : false;
+                    if ($file === $keyValue) {
+                        $subConf = $GLOBALS['TSFE']->pSetup['includeCSS.'][$key.'.'] ?? [];
 
-                            if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['inlineOutput'])) {
-                                $inlineOutput = (bool)trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['inlineOutput']);
-                            }
+                        $outputDir = $subConf['outputdir'] ?? $outputDir;
+                        $outputFile = $subConf['outputfile'] ?? null;
+                        $formatter = $subConf['formatter'] ?? null;
+                        $useSourceMap = isset($subConf['sourceMap']) ? true : false;
+
+                        if ($subConf['inlineOutput'] ?? false) {
+                            $inlineOutput = (bool)trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['inlineOutput']);
                         }
                     }
                 }
@@ -173,9 +169,6 @@ class RenderPreProcessorHook
 
             $cacheKey = hash('sha1', $cssRelativeFilename);
             $contentHash = $this->calculateContentHash($scssFilename, implode(',', $this->variables));
-            if ($showLineNumber) {
-                $contentHash .= 'l1';
-            }
             if ($useSourceMap) {
                 $contentHash .= 'sm';
             }
@@ -190,7 +183,7 @@ class RenderPreProcessorHook
 
             try {
                 if ($contentHashCache === '' || $contentHashCache !== $contentHash) {
-                    $css = $this->compileScss($scssFilename, $cssFilename, $this->variables, $showLineNumber, $formatter, $cssRelativeFilename, $useSourceMap);
+                    $css = $this->compileScss($scssFilename, $cssFilename, $this->variables, $formatter, $cssRelativeFilename, $useSourceMap);
 
                     $cache->set($cacheKey, $contentHash, ['scss'], 0);
                 }
@@ -228,14 +221,13 @@ class RenderPreProcessorHook
      * @param string $scssFilename Existing scss file absolute path
      * @param string $cssFilename File to be written with compiled CSS
      * @param array $vars Variables to compile
-     * @param boolean $showLineNumber Show line numbers
      * @param string $formatter name
      * @param string $cssRelativeFilename
      * @param boolean $useSourceMap Use SourceMap
      * @return string
      * @throws \BadFunctionCallException
      */
-    protected function compileScss($scssFilename, $cssFilename, $vars = [], $showLineNumber = false, $formatter = null, $cssRelativeFilename = null, $useSourceMap = false): string
+    protected function compileScss($scssFilename, $cssFilename, $vars = [], $formatter = null, $cssRelativeFilename = null, $useSourceMap = false): string
     {
 
         $sitePath = \TYPO3\CMS\Core\Core\Environment::getPublicPath() . '/';
@@ -264,12 +256,7 @@ class RenderPreProcessorHook
 
             $parser->setVariables($vars);
 
-            if ($showLineNumber) {
-                $parser->setLineNumberStyle(\ScssPhp\ScssPhp\Compiler::LINE_COMMENTS);
-            }
-            if ($formatter !== null) {
-                $parser->setFormatter($formatter);
-            }
+            $parser->setOutputStyle(\ScssPhp\ScssPhp\OutputStyle::COMPRESSED);
 
             if ($useSourceMap) {
                 $parser->setSourceMap(\ScssPhp\ScssPhp\Compiler::SOURCE_MAP_INLINE);
