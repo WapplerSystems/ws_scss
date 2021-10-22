@@ -237,9 +237,6 @@ class RenderPreProcessorHook
     {
 
         $sitePath = Environment::getPublicPath() . '/';
-        if (!class_exists(Version::class, true)) {
-            require_once __DIR__ . '../../Resources/Private/scssphp/scss.inc.php';
-        }
         $cacheDir = $sitePath . 'typo3temp/assets/css/cache/';
 
         if (!is_dir($cacheDir)) {
@@ -258,7 +255,7 @@ class RenderPreProcessorHook
         $parser = new Compiler($cacheOptions);
         if (file_exists($scssFilename)) {
 
-            $parser->setVariables($vars);
+            $parser->addVariables($vars);
             $parser->setOutputStyle($outputStyle);
 
             if ($useSourceMap) {
@@ -272,11 +269,11 @@ class RenderPreProcessorHook
                 ]);
             }
 
-            $css = $parser->compile('@import "' . $scssFilename . '";');
+            $result = $parser->compileString('@import "' . $scssFilename . '";');
 
-            GeneralUtility::writeFile($cssFilename, $css);
+            GeneralUtility::writeFile($cssFilename, $result->getCss());
 
-            return $css;
+            return $result->getCss();
         }
 
         return '';

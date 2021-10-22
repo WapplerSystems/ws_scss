@@ -1,4 +1,8 @@
 <?php
+
+use ScssPhp\ScssPhp\Version;
+use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
+
 if (!defined('TYPO3_MODE')) {
     die('Access denied.');
 }
@@ -16,4 +20,9 @@ if (!is_array($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations
             'defaultLifetime' => 0,
         ]
     ];
+}
+
+if (!class_exists(Version::class, true)) {
+    $extPath = ExtensionManagementUtility::extPath('ws_scss');
+    require_once $extPath . 'Resources/Private/scssphp/scss.inc.php';
 }
