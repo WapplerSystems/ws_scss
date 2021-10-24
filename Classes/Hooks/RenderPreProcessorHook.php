@@ -129,7 +129,7 @@ class RenderPreProcessorHook
                         $outputDir = $subConf['outputdir'] ?? $outputDir;
                         $outputFile = $subConf['outputfile'] ?? null;
                         $useSourceMap = isset($subConf['sourceMap']);
-                        if ($subConf['outputStyle'] === 'expanded' || $subConf['outputStyle'] === 'compressed') {
+                        if (isset($subConf['outputStyle']) && ($subConf['outputStyle'] === 'expanded' || $subConf['outputStyle'] === 'compressed')) {
                             $outputStyle = $subConf['outputStyle'];
                         }
 
