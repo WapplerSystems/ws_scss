@@ -22,15 +22,16 @@ namespace WapplerSystems\WsScss\Hooks;
  *  This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
 
-use TYPO3\CMS\Core\Cache\Backend\FileBackend;
-use TYPO3\CMS\Core\Cache\CacheManager;
-use TYPO3\CMS\Core\Log\Logger;
+use ScssPhp\ScssPhp\Exception\SassException;
+use TYPO3\CMS\Core\Cache\Exception\NoSuchCacheException;
 use TYPO3\CMS\Core\Page\PageRenderer;
-use TYPO3\CMS\Core\Utility\DebugUtility;
-use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
+use TYPO3\CMS\Core\Resource\Exception\FileDoesNotExistException;
+use TYPO3\CMS\Core\Resource\Exception\InvalidFileException;
+use TYPO3\CMS\Core\Resource\Exception\InvalidFileNameException;
+use TYPO3\CMS\Core\Resource\Exception\InvalidPathException;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Core\Log\LogManager;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
+use TYPO3\CMS\Frontend\Resource\FilePathSanitizer;
 use WapplerSystems\WsScss\Compiler;
 
 /**
@@ -58,12 +59,12 @@ class RenderPreProcessorHook
      * @param array $params Array of CSS/javascript and other files
      * @param PageRenderer $pagerenderer Pagerenderer object
      * @return void
-     * @throws \TYPO3\CMS\Core\Cache\Exception\NoSuchCacheException
-     * @throws \TYPO3\CMS\Core\Resource\Exception\FileDoesNotExistException
-     * @throws \TYPO3\CMS\Core\Resource\Exception\InvalidFileException
-     * @throws \TYPO3\CMS\Core\Resource\Exception\InvalidFileNameException
-     * @throws \TYPO3\CMS\Core\Resource\Exception\InvalidPathException
-     * @throws \ScssPhp\ScssPhp\Exception\CompilerException
+     * @throws FileDoesNotExistException
+     * @throws InvalidFileException
+     * @throws InvalidFileNameException
+     * @throws InvalidPathException
+     * @throws NoSuchCacheException
+     * @throws SassException
      */
     public function renderPreProcessorProc(&$params, PageRenderer $pagerenderer)
     {
@@ -72,8 +73,6 @@ class RenderPreProcessorHook
         }
 
         $defaultOutputDir = 'typo3temp/assets/css/';
-
-        $sitePath = \TYPO3\CMS\Core\Core\Environment::getPublicPath() . '/';
 
         $setup = $GLOBALS['TSFE']->tmpl->setup;
         if (\is_array($setup['plugin.']['tx_wsscss.']['variables.'])) {
@@ -96,9 +95,7 @@ class RenderPreProcessorHook
             $this->variables = $parsedTypoScriptVariables;
         }
 
-        $variablesHash = \count($this->variables) > 0 ? hash('md5', implode(',', $this->variables)) : null;
-
-        $filePathSanitizer = GeneralUtility::makeInstance(\TYPO3\CMS\Frontend\Resource\FilePathSanitizer::class);
+        $filePathSanitizer = GeneralUtility::makeInstance(FilePathSanitizer::class);
 
         // we need to rebuild the CSS array to keep order of CSS files
         $cssFiles = [];
@@ -113,10 +110,8 @@ class RenderPreProcessorHook
             $outputDir = $defaultOutputDir;
 
             $inlineOutput = false;
-            $filename = $pathInfo['filename'];
-            $formatter = null;
-            $useSourceMap = false;
             $outputFilePath = null;
+            $useSourceMap = false;
 
             // search settings for scss file
             if (\is_array($GLOBALS['TSFE']->pSetup['includeCSS.'])) {
@@ -125,7 +120,6 @@ class RenderPreProcessorHook
                     if (\is_string($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) && trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) !== '' && $filePathSanitizer->sanitize($GLOBALS['TSFE']->pSetup['includeCSS.'][$key]) === $file) {
                         $outputDir = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputdir']) : $outputDir;
                         $outputFilePath = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['outputfile']) : null;
-                        $formatter = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['formatter']) ? trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['formatter']) : null;
                         $useSourceMap = isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['sourceMap']);
 
                         if (isset($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['inlineOutput'])) {
@@ -135,15 +129,9 @@ class RenderPreProcessorHook
                 }
             }
 
-
             $scssFilePath = GeneralUtility::getFileAbsFileName($conf['file']);
 
-
-            //DebugUtility::debug($scssFilePath,'scssFilePath');
-
-            $cssFilePath = Compiler::compileFile($scssFilePath,$this->variables, $outputFilePath);
-
-
+            $cssFilePath = Compiler::compileFile($scssFilePath, $this->variables, $outputFilePath, $useSourceMap);
 
             if ($inlineOutput) {
                 unset($cssFiles[$file]);
@@ -161,8 +149,6 @@ class RenderPreProcessorHook
         }
         $params['cssFiles'] = $cssFiles;
     }
-
-
 
 
 }

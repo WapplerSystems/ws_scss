@@ -18,3 +18,9 @@ if (!isset($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations'][
         ]
     ];
 }
+
+
+if (!class_exists(\ScssPhp\ScssPhp\Version::class, true)) {
+    $extPath = \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::extPath('ws_scss');
+    require_once $extPath . 'Resources/Private/scssphp/scss.inc.php';
+}

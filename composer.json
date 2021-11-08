@@ -2,7 +2,7 @@
     "name": "svewap/ws-scss",
     "description": "SASS compiler for TYPO3",
     "type": "typo3-cms-extension",
-    "homepage": "http://wappler.systems",
+    "homepage": "https://wappler.systems",
     "license": "GPL-2.0-or-later",
     "keywords": [
         "TYPO3",
@@ -13,8 +13,7 @@
     "require": {
         "typo3/cms-core": "^9.5 || ^10.4 || ^11",
         "php": "^7.2",
-        "scssphp/scssphp": "^1",
-        "css-crush/css-crush": "^3"
+        "scssphp/scssphp": "^1"
     },
     "replace": {
         "typo3-ter/ws-scss": "self.version"

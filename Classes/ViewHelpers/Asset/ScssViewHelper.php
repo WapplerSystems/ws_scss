@@ -4,6 +4,8 @@ declare (strict_types=1);
 namespace WapplerSystems\WsScss\ViewHelpers\Asset;
 
 
+use ScssPhp\ScssPhp\Exception\SassException;
+use TYPO3\CMS\Core\Cache\Exception\NoSuchCacheException;
 use TYPO3\CMS\Core\Resource\Exception\FileDoesNotExistException;
 use TYPO3\CMS\Fluid\ViewHelpers\Asset\CssViewHelper;
 use WapplerSystems\WsScss\Compiler;
@@ -17,13 +19,15 @@ class ScssViewHelper extends CssViewHelper
 
         $this->registerArgument('scssVariables', 'mixed', 'An optional array of variables to be set inside the SCSS context', false);
         $this->registerArgument('outputfile', 'string', '', false);
-        $this->registerArgument('forceOutputLocation', 'string', 'force "inline" or "file"', false, '');
+        $this->registerArgument('forcedOutputLocation', 'string', 'force "inline" or "file"', false, '');
     }
 
 
     /**
+     * @return string
      * @throws FileDoesNotExistException
-     * @throws \ScssPhp\ScssPhp\Exception\CompilerException
+     * @throws SassException
+     * @throws NoSuchCacheException
      */
     public function render(): string
     {
@@ -31,10 +35,8 @@ class ScssViewHelper extends CssViewHelper
         $identifier = (string)$this->arguments['identifier'];
         $attributes = $this->tag->getAttributes();
         $variables = (array)$this->arguments['scssVariables'];
-        $useSourceMap = false;
-        $formatter = null;
         $outputFile = $this->arguments['outputfile'];
-        $forceOutputLocation = $this->arguments['forceOutputLocation'];
+        $forcedOutputLocation = $this->arguments['forcedOutputLocation'];
 
         // boolean attributes shall output attr="attr" if set
         if ($attributes['disabled'] ?? false) {
@@ -52,7 +54,7 @@ class ScssViewHelper extends CssViewHelper
 
             $cssFile = Compiler::compileFile($file, $variables, $outputFile);
 
-            if ($forceOutputLocation === 'inline') {
+            if ($forcedOutputLocation === 'inline') {
                 $content = file_get_contents($cssFile);
                 $this->assetCollector->addInlineStyleSheet($identifier, $content, $attributes, $options);
             } else {
@@ -63,7 +65,7 @@ class ScssViewHelper extends CssViewHelper
             $content = (string)$this->renderChildren();
             $cssFile = Compiler::compileSassString($content, $variables, $outputFile);
 
-            if ($forceOutputLocation === 'file') {
+            if ($forcedOutputLocation === 'file') {
                 $this->assetCollector->addStyleSheet($identifier, $cssFile, $attributes, $options);
             } else {
                 $content = file_get_contents($cssFile);

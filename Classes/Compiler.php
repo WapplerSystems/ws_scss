@@ -2,9 +2,11 @@
 
 namespace WapplerSystems\WsScss;
 
+use ScssPhp\ScssPhp\Exception\SassException;
 use ScssPhp\ScssPhp\OutputStyle;
 use TYPO3\CMS\Core\Cache\Backend\FileBackend;
 use TYPO3\CMS\Core\Cache\CacheManager;
+use TYPO3\CMS\Core\Cache\Exception\NoSuchCacheException;
 use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\Log\Logger;
 use TYPO3\CMS\Core\Log\LogManager;
@@ -17,39 +19,49 @@ class Compiler
 {
 
 
-    public static function compileSassString($scssContent, $variables, $cssFilename = null): string
+    /**
+     * @param $scssContent
+     * @param $variables
+     * @param null $cssFilename
+     * @param bool $useSourceMap
+     * @param string $outputStyle
+     * @return string
+     * @throws FileDoesNotExistException
+     * @throws NoSuchCacheException
+     * @throws SassException
+     */
+    public static function compileSassString($scssContent, $variables, $cssFilename = null, bool $useSourceMap = false, string $outputStyle = OutputStyle::COMPRESSED): string
     {
 
         $hash = sha1($scssContent);
-        $fileName = 'typo3temp/assets/scss/' . $hash.'.scss';
-        $absoluteFileName = GeneralUtility::getFileAbsFileName($fileName);
+        $tempScssFilePath = 'typo3temp/assets/scss/' . $hash.'.scss';
+        $absoluteTempScssFilePath = GeneralUtility::getFileAbsFileName($tempScssFilePath);
 
+        if (!file_exists($absoluteTempScssFilePath)) {
+            GeneralUtility::mkdir_deep(dirname($absoluteTempScssFilePath));
+            GeneralUtility::writeFile($absoluteTempScssFilePath,$scssContent);
+        }
 
-        $file = self::compileFile();
-
-
-
-        GeneralUtility::writeFile($absoluteFileName, $content);
-
-
-        $sitePath = Environment::getPublicPath() . '/';
-        $relativeFileName = $sitePath . $fileName;
-
+        return self::compileFile($tempScssFilePath, $variables, $cssFilename, $useSourceMap, $outputStyle);
     }
 
 
     /**
+     * @param string $scssFilePath
+     * @param array $variables
+     * @param string|null $cssFilePath
+     * @param bool $useSourceMap
+     * @param string $outputStyle
+     * @return string the compiled css file as path
      * @throws FileDoesNotExistException
-     * @throws \ScssPhp\ScssPhp\Exception\CompilerException
+     * @throws NoSuchCacheException
+     * @throws SassException
      */
-    public static function compileFile($scssFilePath, $variables, $cssFilePath = null): string
+    public static function compileFile(string $scssFilePath, array $variables, string $cssFilePath = null, bool $useSourceMap = false, string $outputStyle = OutputStyle::COMPRESSED): string
     {
-
         $scssFilePath = GeneralUtility::getFileAbsFileName($scssFilePath);
         $variablesHash = \count($variables) > 0 ? hash('md5', implode(',', $variables)) : null;
         $sitePath = Environment::getPublicPath() . '/';
-
-        $outputStyle = OutputStyle::EXPANDED;
 
         if (!file_exists($scssFilePath)) {
             throw new FileDoesNotExistException($scssFilePath);
@@ -60,7 +72,7 @@ class Compiler
 
             $pathInfo = pathinfo($scssFilePath);
             $filename = $pathInfo['filename'];
-            $outputDir = $defaultOutputDir = 'typo3temp/assets/css/';
+            $outputDir = 'typo3temp/assets/css/';
 
 
             $outputDir = (substr($outputDir, -1) === '/') ? $outputDir : $outputDir . '/';
@@ -73,14 +85,7 @@ class Compiler
             }
 
             $cssFilePath = $outputDir . $filename . ($variablesHash ? '_' . $variablesHash : '')  . '.css';
-
         }
-
-
-        //GeneralUtility::mkdir_deep($sitePath . $outputDir);
-
-
-
 
         /** @var FileBackend $cache */
         $cache = GeneralUtility::makeInstance(CacheManager::class)->getCache('ws_scss');
@@ -88,15 +93,12 @@ class Compiler
         $cacheKey = hash('sha1', $scssFilePath);
         $calculatedContentHash = self::calculateContentHash($scssFilePath, $variables);
         $calculatedContentHash .= md5($cssFilePath);
-
-        /*
         if ($useSourceMap) {
             $calculatedContentHash .= 'sm';
         }
-        $calculatedContentHash .= $formatter;
-*/
 
-        $contentHashCache = '';
+        $calculatedContentHash .= $outputStyle;
+
         if ($cache->has($cacheKey)) {
             $contentHashCache = $cache->get($cacheKey);
             if ($contentHashCache === $calculatedContentHash) {
@@ -104,10 +106,6 @@ class Compiler
             }
         }
 
-
-        $sourceMapOptions = [
-            'sourceMapBasepath' => $sitePath,
-        ];
 
         // Sass compiler cache
         $cacheDir = $sitePath . 'typo3temp/assets/scss/cache/';
@@ -124,24 +122,25 @@ class Compiler
             'prefix' => md5($cssFilePath),
         ];
 
-        if (!class_exists(\ScssPhp\ScssPhp\Version::class, true)) {
-            require_once __DIR__ . '../Resources/Private/scssphp/scss.inc.php';
-        }
-        $parser = new \ScssPhp\ScssPhp\Compiler($cacheOptions);
-        $parser->setVariables($variables);
 
+        $parser = new \ScssPhp\ScssPhp\Compiler($cacheOptions);
+        $parser->addVariables($variables);
         $parser->setOutputStyle($outputStyle);
 
-        /*
-        if ($sourceMapOptions !== null) {
+        if ($useSourceMap) {
             $parser->setSourceMap(\ScssPhp\ScssPhp\Compiler::SOURCE_MAP_INLINE);
-            $parser->setSourceMapOptions($sourceMapOptions);
-        }*/
+
+            $parser->setSourceMapOptions([
+                'sourceMapBasepath' => $sitePath,
+                'sourceMapRootpath' => '/',
+            ]);
+        }
 
         try {
-            $css = $parser->compile('@import "' . $scssFilePath . '";');
+            $result = $parser->compileString('@import "' . $scssFilePath . '";');
             $cache->set($cacheKey, $calculatedContentHash, ['scss'], 0);
-            GeneralUtility::writeFile(GeneralUtility::getFileAbsFileName($cssFilePath), $css);
+            GeneralUtility::mkdir_deep(dirname(GeneralUtility::getFileAbsFileName($cssFilePath)));
+            GeneralUtility::writeFile(GeneralUtility::getFileAbsFileName($cssFilePath), $result->getCss());
         } catch (\Exception $ex) {
             DebugUtility::debug($ex->getMessage());
 
