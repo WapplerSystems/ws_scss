@@ -191,7 +191,8 @@ class RenderPreProcessorHook
                     $cache->set($cacheKey, $contentHash, ['scss'], 0);
                 }
             } catch (\Exception $ex) {
-                if(!GeneralUtility::getApplicationContext()->isProduction()) {
+                $applicationContext = \TYPO3\CMS\Core\Core\Environment::getContext();
+                if(!$applicationContext->isProduction()) {
                     DebugUtility::debug($ex->getMessage());
                 }
 
