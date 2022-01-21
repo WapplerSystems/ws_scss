@@ -1,9 +1,3 @@
-
 plugin.tx_wsscss.variables {
-  
-    
-  
     #test = #666
-  
-
 }
