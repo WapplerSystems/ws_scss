@@ -25,17 +25,10 @@ namespace WapplerSystems\WsScss\Hooks;
 use ScssPhp\ScssPhp\Exception\SassException;
 use ScssPhp\ScssPhp\OutputStyle;
 use TYPO3\CMS\Core\Cache\Exception\NoSuchCacheException;
-use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\Page\PageRenderer;
 use TYPO3\CMS\Core\Resource\Exception\FileDoesNotExistException;
-use TYPO3\CMS\Core\Resource\Exception\InvalidFileException;
-use TYPO3\CMS\Core\Resource\Exception\InvalidFileNameException;
-use TYPO3\CMS\Core\Resource\Exception\InvalidPathException;
-use TYPO3\CMS\Core\Utility\DebugUtility;
-use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
-use TYPO3\CMS\Frontend\Resource\FilePathSanitizer;
 use WapplerSystems\WsScss\Compiler;
 
 /**
@@ -47,8 +40,6 @@ use WapplerSystems\WsScss\Compiler;
  */
 class RenderPreProcessorHook
 {
-
-    private static $visitedFiles = [];
 
     private $variables = [];
 
@@ -64,21 +55,16 @@ class RenderPreProcessorHook
      * @param PageRenderer $pagerenderer Pagerenderer object
      * @return void
      * @throws FileDoesNotExistException
-     * @throws InvalidFileException
-     * @throws InvalidFileNameException
-     * @throws InvalidPathException
      * @throws NoSuchCacheException
      * @throws SassException
      */
-    public function renderPreProcessorProc(&$params, PageRenderer $pagerenderer)
+    public function renderPreProcessorProc(array &$params, PageRenderer $pagerenderer): void
     {
         if (!\is_array($params['cssFiles'])) {
             return;
         }
 
         $defaultOutputDir = 'typo3temp/assets/css/';
-
-        $sitePath = Environment::getPublicPath() . '/';
 
         $setup = $GLOBALS['TSFE']->tmpl->setup;
         if (\is_array($setup['plugin.']['tx_wsscss.']['variables.'])) {
@@ -94,7 +80,7 @@ class RenderPreProcessorHook
                     $content = $this->contentObjectRenderer->cObjGetSingle($variables[$variable], $variables[$variable . '.']);
                     $parsedTypoScriptVariables[$variable] = $content;
 
-                } elseif (substr($variable, -1) !== '.') {
+                } elseif (!str_ends_with($variable, '.')) {
                     $parsedTypoScriptVariables[$variable] = $key;
                 }
             }
@@ -115,7 +101,6 @@ class RenderPreProcessorHook
             $outputDir = $defaultOutputDir;
 
             $inlineOutput = false;
-            $filename = $pathInfo['filename'];
             $useSourceMap = false;
             $outputFilePath = null;
             $outputStyle = OutputStyle::COMPRESSED;
@@ -123,7 +108,7 @@ class RenderPreProcessorHook
             // search settings for scss file
             if (is_array($GLOBALS['TSFE']->pSetup['includeCSS.'] ?? [])) {
                 foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] as $key => $keyValue) {
-                    if (substr($key,-1) === '.') {
+                    if (str_ends_with($key, '.')) {
                         continue;
                     }
 
@@ -160,11 +145,8 @@ class RenderPreProcessorHook
                 $cssFiles[$cssFilePath] = $params['cssFiles'][$file];
                 $cssFiles[$cssFilePath]['file'] = $cssFilePath;
             }
-
-
         }
         $params['cssFiles'] = $cssFiles;
     }
-
 
 }
