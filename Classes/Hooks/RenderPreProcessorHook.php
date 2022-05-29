@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace WapplerSystems\WsScss\Hooks;
 
 /***************************************************************
@@ -69,7 +71,7 @@ class RenderPreProcessorHook
      */
     public function renderPreProcessorProc(array &$params, PageRenderer $pageRenderer): void
     {
-        if (!is_array($params['cssFiles'])) {
+        if (!\is_array($params['cssFiles'])) {
             return;
         }
 
@@ -79,13 +81,12 @@ class RenderPreProcessorHook
         $sitePath = Environment::getPublicPath() . '/';
 
         $setup = $GLOBALS['TSFE']->tmpl->setup;
-        if (is_array($setup['plugin.']['tx_wsscss.']['variables.'])) {
-
+        if (\is_array($setup['plugin.']['tx_wsscss.']['variables.'])) {
             $variables = $setup['plugin.']['tx_wsscss.']['variables.'];
 
             $parsedTypoScriptVariables = [];
             foreach ($variables as $variable => $key) {
-                if (array_key_exists($variable . '.', $variables)) {
+                if (\array_key_exists($variable . '.', $variables)) {
                     $content = $this->contentObjectRenderer->cObjGetSingle($variables[$variable], $variables[$variable . '.']);
                     $parsedTypoScriptVariables[$variable] = $content;
 
@@ -96,7 +97,7 @@ class RenderPreProcessorHook
             $this->variables = $parsedTypoScriptVariables;
         }
 
-        $variablesHash = count($this->variables) > 0 ? hash('md5', implode(',', $this->variables)) : null;
+        $variablesHash = \count($this->variables) > 0 ? hash('md5', implode(',', $this->variables)) : null;
 
         // we need to rebuild the CSS array to keep order of CSS files
         $cssFiles = [];
@@ -117,7 +118,7 @@ class RenderPreProcessorHook
             $outputStyle = OutputStyle::COMPRESSED;
 
             // search settings for scss file
-            if (is_array($GLOBALS['TSFE']->pSetup['includeCSS.'] ?? [])) {
+            if (\is_array($GLOBALS['TSFE']->pSetup['includeCSS.'] ?? [])) {
                 foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] as $key => $keyValue) {
                     if (substr($key,-1) === '.') {
                         continue;
@@ -134,13 +135,13 @@ class RenderPreProcessorHook
                         }
 
                         if ($subConf['inlineOutput'] ?? false) {
-                            $inlineOutput = (bool)trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['inlineOutput']);
+                            $inlineOutput = (bool) trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['inlineOutput']);
                         }
                     }
                 }
             }
             if ($outputFile !== null) {
-                $outputDir = dirname($outputFile);
+                $outputDir = \dirname($outputFile);
                 $filename = basename($outputFile);
             }
 
@@ -150,7 +151,7 @@ class RenderPreProcessorHook
                 [$extKey, $script] = explode('/', substr($outputDir, 4), 2);
                 if ($extKey && ExtensionManagementUtility::isLoaded($extKey)) {
                     $extPath = ExtensionManagementUtility::extPath($extKey);
-                    $outputDir = substr($extPath, strlen($sitePath)) . $script;
+                    $outputDir = substr($extPath, \strlen($sitePath)) . $script;
                 }
             }
 
@@ -162,7 +163,7 @@ class RenderPreProcessorHook
             GeneralUtility::mkdir_deep($sitePath . $outputDir);
             if ($outputFile === null) {
                 $cssRelativeFilename = $outputDir . $filename . (($outputDir === $defaultOutputDir) ? '_' . hash('sha1',
-                            $file) : (count($this->variables) > 0 ? '_' . $variablesHash : '')) . ((substr($filename,-4) === '.css') ? '' : '.css');
+                            $file) : (\count($this->variables) > 0 ? '_' . $variablesHash : '')) . ((substr($filename,-4) === '.css') ? '' : '.css');
             } else {
                 $cssRelativeFilename = $outputDir . $filename . ((substr($filename,-4) === '.css') ? '' : '.css');
             }
@@ -192,7 +193,7 @@ class RenderPreProcessorHook
                 }
             } catch (\Exception $ex) {
                 $applicationContext = \TYPO3\CMS\Core\Core\Environment::getContext();
-                if(!$applicationContext->isProduction()) {
+                if (!$applicationContext->isProduction()) {
                     DebugUtility::debug($ex->getMessage());
                 }
 
@@ -270,11 +271,11 @@ class RenderPreProcessorHook
                 ]);
             }
 
-            $result = $parser->compileString('@import "' . $scssFilename . '";');
+            $css = $parser->compileString('@import "' . $scssFilename . '";')->getCss();
 
-            GeneralUtility::writeFile($cssFilename, $result->getCss());
+            GeneralUtility::writeFile($cssFilename, $css);
 
-            return $result->getCss();
+            return $css;
         }
 
         return '';
@@ -289,7 +290,7 @@ class RenderPreProcessorHook
      */
     protected function calculateContentHash(string $scssFilename, string $vars = ''): string
     {
-        if (in_array($scssFilename, self::$visitedFiles, true)) {
+        if (\in_array($scssFilename, self::$visitedFiles, true)) {
             return '';
         }
         self::$visitedFiles[] = $scssFilename;
@@ -342,7 +343,7 @@ class RenderPreProcessorHook
         foreach ($matches[1] as $importString) {
             $files = explode(',', $importString);
 
-            array_walk($files, function(string &$file) {
+            array_walk($files, function(string &$file): void {
                 $file = trim($file, " \t\n\r\0\x0B'\"");
             });
 
