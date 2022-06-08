@@ -10,6 +10,13 @@
         "scss",
         "sass"
     ],
+    "authors": [
+        {
+            "name": "Sven Wappler",
+            "role": "Developer",
+            "homepage": "https://wappler.systems"
+        }
+    ],
     "require": {
         "typo3/cms-core": "^11",
         "php": "^7.4 || ^8.0",
@@ -27,11 +34,10 @@
             "extension-key": "ws_scss"
         }
     },
-    "authors": [
-        {
-            "name": "Sven Wappler",
-            "role": "Developer",
-            "homepage": "https://wappler.systems"
+    "config": {
+        "allow-plugins": {
+            "typo3/cms-composer-installers": true,
+            "typo3/class-alias-loader": true
         }
-    ]
+    }
 }
