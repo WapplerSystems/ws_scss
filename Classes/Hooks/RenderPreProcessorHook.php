@@ -237,6 +237,10 @@ class RenderPreProcessorHook
      */
     protected function compileScss(string $scssFilename, string $cssFilename, string $outputStyle, array $vars = [], string $cssRelativeFilename = null, bool $useSourceMap = false): string
     {
+        if (!file_exists($scssFilename)) {
+            // TODO: Error message?
+            return '';
+        }
 
         $sitePath = Environment::getPublicPath() . '/';
         $cacheDir = $sitePath . 'typo3temp/assets/css/cache/';
@@ -255,30 +259,25 @@ class RenderPreProcessorHook
             'prefix' => md5($cssFilename),
         ];
         $parser = new Compiler($cacheOptions);
-        if (file_exists($scssFilename)) {
+        $parser->addVariables($vars);
+        $parser->setOutputStyle($outputStyle);
 
-            $parser->addVariables($vars);
-            $parser->setOutputStyle($outputStyle);
+        if ($useSourceMap) {
+            $parser->setSourceMap(Compiler::SOURCE_MAP_INLINE);
 
-            if ($useSourceMap) {
-                $parser->setSourceMap(Compiler::SOURCE_MAP_INLINE);
-
-                $parser->setSourceMapOptions([
-                    'sourceMapWriteTo' => $cssFilename . '.map',
-                    'sourceMapURL' => $cssRelativeFilename . '.map',
-                    'sourceMapBasepath' => $sitePath,
-                    'sourceMapRootpath' => '/',
-                ]);
-            }
-
-            $css = $parser->compileString('@import "' . $scssFilename . '";')->getCss();
-
-            GeneralUtility::writeFile($cssFilename, $css);
-
-            return $css;
+            $parser->setSourceMapOptions([
+                'sourceMapWriteTo' => $cssFilename . '.map',
+                'sourceMapURL' => $cssRelativeFilename . '.map',
+                'sourceMapBasepath' => $sitePath,
+                'sourceMapRootpath' => '/',
+            ]);
         }
 
-        return '';
+        $css = $parser->compileString('@import "' . $scssFilename . '";')->getCss();
+
+        GeneralUtility::writeFile($cssFilename, $css);
+
+        return $css;
     }
 
     /**
