@@ -34,7 +34,7 @@ $EM_CONF['ws_scss'] = [
     'CGLcompliance_note' => '',
     'constraints' => [
         'depends' => [
-            'php' => '8.0.0-8.0.99',
+            'php' => '8.0.0-8.1.99',
             'typo3' => '11.5.0-11.5.99',
         ],
         'conflicts' => [
