@@ -183,7 +183,7 @@ class RenderPreProcessorHook
                 $contentHashCache = $cache->get($cacheKey);
             }
 
-            $css = '';
+            $css = null;
 
             try {
                 if ($contentHashCache === '' || $contentHashCache !== $contentHash) {
@@ -204,7 +204,7 @@ class RenderPreProcessorHook
 
             if ($inlineOutput) {
                 unset($cssFiles[$cssRelativeFilename]);
-                if ($css === '') {
+                if ($css === null) {
                     $css = file_get_contents($cssFilename);
                 }
 
@@ -235,11 +235,11 @@ class RenderPreProcessorHook
      * @throws CompilerException
      * @throws SassException
      */
-    protected function compileScss(string $scssFilename, string $cssFilename, string $outputStyle, array $vars = [], string $cssRelativeFilename = null, bool $useSourceMap = false): string
+    protected function compileScss(string $scssFilename, string $cssFilename, string $outputStyle, array $vars = [], string $cssRelativeFilename = null, bool $useSourceMap = false): ?string
     {
         if (!file_exists($scssFilename)) {
-            // TODO: Error message?
-            return '';
+            // TODO: Error message
+            return null;
         }
 
         $sitePath = Environment::getPublicPath() . '/';
@@ -251,7 +251,7 @@ class RenderPreProcessorHook
 
         if (!is_writable($cacheDir)) {
             // TODO: Error message
-            return '';
+            return null;
         }
 
         $cacheOptions = [
@@ -259,6 +259,7 @@ class RenderPreProcessorHook
             'prefix' => md5($cssFilename),
         ];
         $parser = new Compiler($cacheOptions);
+
         $parser->addVariables($vars);
         $parser->setOutputStyle($outputStyle);
 
