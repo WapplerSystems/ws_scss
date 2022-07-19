@@ -140,6 +140,7 @@ class RenderPreProcessorHook
                 // TODO: compression
                 $params['cssInline'][$file] = [
                     'code' => file_get_contents(GeneralUtility::getFileAbsFileName($cssFilePath)),
+                    'forceOnTop' => false,
                 ];
             } else {
                 $cssFiles[$cssFilePath] = $params['cssFiles'][$file];
