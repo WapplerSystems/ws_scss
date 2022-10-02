@@ -117,14 +117,11 @@ class RenderPreProcessorHook
 
                         $outputDir = $subConf['outputdir'] ?? $outputDir;
                         $outputFilePath = $subConf['outputfile'] ?? null;
-                        $useSourceMap = isset($subConf['sourceMap']);
+                        $useSourceMap = ($subConf['sourceMap'] ?? '') === 'true' || ($subConf['sourceMap'] ?? '') === '1';
                         if (isset($subConf['outputStyle']) && ($subConf['outputStyle'] === 'expanded' || $subConf['outputStyle'] === 'compressed')) {
                             $outputStyle = $subConf['outputStyle'];
                         }
-
-                        if ($subConf['inlineOutput'] ?? false) {
-                            $inlineOutput = (bool)trim($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['inlineOutput']);
-                        }
+                        $inlineOutput = ($subConf['inlineOutput'] ?? '') === 'true' || ($subConf['inlineOutput'] ?? '') === '1';
                     }
                 }
             }
@@ -132,6 +129,9 @@ class RenderPreProcessorHook
 
             $scssFilePath = GeneralUtility::getFileAbsFileName($conf['file']);
 
+            if ($inlineOutput) {
+                $useSourceMap = false;
+            }
             $cssFilePath = Compiler::compileFile($scssFilePath, $this->variables, $outputFilePath, $useSourceMap, $outputStyle);
 
             if ($inlineOutput) {
