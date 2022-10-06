@@ -18,22 +18,6 @@
 Usage
 -----
 
-Use the includeCSS command and define the output dir:
-
-::
-
-   page.includeCSS {
-   
-     bootstrap = fileadmin/bootstrap/sass/bootstrap.scss
-     bootstrap.outputdir = fileadmin/bootstrap/css/
-   
-   }
-
-You can also leave off the  *outputdir* . Then the extension writes
-the css files into the typo3temp/ws\_scss dir.
-
-Another way is to define the output file
-
 ::
 
    page.includeCSS {
@@ -60,40 +44,35 @@ part of your template:
 If you combine *outputfile* and variables you can create different bootstrap styles with same files.
 
 
-Formatter
----------
+Output Style
+------------
 
-It’s possible to customize the formatting of the output CSS by changing the default formatter.
+It’s possible to customize the formatting of the output CSS by changing the style.
 
-- ScssPhp\ScssPhp\Formatter\Expanded
-- ScssPhp\ScssPhp\Formatter\Nested (default)
-- ScssPhp\ScssPhp\Formatter\Compressed
-- ScssPhp\ScssPhp\Formatter\Compact
-- ScssPhp\ScssPhp\Formatter\Crunched
+- expanded
+- compressed
 
 
 ::
 
    page.includeCSS {
 
-       bootstrap = {$plugin.tx_demotemplate.filepaths.scss}bootstrap.scss
-       bootstrap.outputdir = {$plugin.tx_demotemplate.filepaths.css}
-       bootstrap.formatter = ScssPhp\ScssPhp\Formatter\Compressed
+       bootstrap = fileadmin/bootstrap/sass/bootstrap.scss
+       bootstrap.outputStyle = expanded
    }
 
 
-Debugging
----------
+Source Map
+----------
 
-You can output the original SCSS line numbers within the compiled CSS file for better frontend debugging.
+You can enable the source map
 
 ::
 
    page.includeCSS {
 
-       bootstrap = {$plugin.tx_demotemplate.filepaths.scss}bootstrap.scss
-       bootstrap.outputdir = {$plugin.tx_demotemplate.filepaths.css}
-       bootstrap.linenumber = true
+       bootstrap = fileadmin/bootstrap/sass/bootstrap.scss
+       bootstrap.sourceMap = true
    }
 
 
@@ -108,7 +87,7 @@ changes. Go into your backend user settings and use this command:
 Credits
 -------
 
-Sven Wappler. `TYPO3 Agentur Aachen <http://www.wapplersystems.de/>`_
+Sven Wappler. `TYPO3 Agentur Aachen <https://wappler.systems/>`_
 
 
 
