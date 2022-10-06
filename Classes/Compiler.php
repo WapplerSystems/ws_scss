@@ -75,7 +75,7 @@ class Compiler
             $outputDir = 'typo3temp/assets/css/';
 
 
-            $outputDir = (substr($outputDir, -1) === '/') ? $outputDir : $outputDir . '/';
+            $outputDir = str_ends_with($outputDir, '/') ? $outputDir : $outputDir . '/';
             if (!strcmp(substr($outputDir, 0, 4), 'EXT:')) {
                 [$extKey, $script] = explode('/', substr($outputDir, 4), 2);
                 if ($extKey && ExtensionManagementUtility::isLoaded($extKey)) {

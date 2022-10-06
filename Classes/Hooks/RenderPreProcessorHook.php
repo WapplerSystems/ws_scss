@@ -64,8 +64,6 @@ class RenderPreProcessorHook
             return;
         }
 
-        $defaultOutputDir = 'typo3temp/assets/css/';
-
         $setup = $GLOBALS['TSFE']->tmpl->setup;
         if (\is_array($setup['plugin.']['tx_wsscss.']['variables.'])) {
 
@@ -87,7 +85,6 @@ class RenderPreProcessorHook
             $this->variables = $parsedTypoScriptVariables;
         }
 
-
         // we need to rebuild the CSS array to keep order of CSS files
         $cssFiles = [];
         foreach ($params['cssFiles'] as $file => $conf) {
@@ -97,8 +94,6 @@ class RenderPreProcessorHook
                 $cssFiles[$file] = $conf;
                 continue;
             }
-
-            $outputDir = $defaultOutputDir;
 
             $inlineOutput = false;
             $useSourceMap = false;
@@ -115,7 +110,6 @@ class RenderPreProcessorHook
                     if ($file === $keyValue) {
                         $subConf = $GLOBALS['TSFE']->pSetup['includeCSS.'][$key.'.'] ?? [];
 
-                        $outputDir = $subConf['outputdir'] ?? $outputDir;
                         $outputFilePath = $subConf['outputfile'] ?? null;
                         $useSourceMap = ($subConf['sourceMap'] ?? '') === 'true' || ($subConf['sourceMap'] ?? '') === '1';
                         if (isset($subConf['outputStyle']) && ($subConf['outputStyle'] === 'expanded' || $subConf['outputStyle'] === 'compressed')) {
@@ -125,7 +119,6 @@ class RenderPreProcessorHook
                     }
                 }
             }
-
 
             $scssFilePath = GeneralUtility::getFileAbsFileName($conf['file']);
 
