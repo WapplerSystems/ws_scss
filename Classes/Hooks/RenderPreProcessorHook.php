@@ -111,11 +111,11 @@ class RenderPreProcessorHook
                         $subConf = $GLOBALS['TSFE']->pSetup['includeCSS.'][$key.'.'] ?? [];
 
                         $outputFilePath = $subConf['outputfile'] ?? null;
-                        $useSourceMap = ($subConf['sourceMap'] ?? '') === 'true' || ($subConf['sourceMap'] ?? '') === '1';
+                        $useSourceMap = $this->parseBooleanSetting($subConf['sourceMap'] ?? false, false);
                         if (isset($subConf['outputStyle']) && ($subConf['outputStyle'] === 'expanded' || $subConf['outputStyle'] === 'compressed')) {
                             $outputStyle = $subConf['outputStyle'];
                         }
-                        $inlineOutput = ($subConf['inlineOutput'] ?? '') === 'true' || ($subConf['inlineOutput'] ?? '') === '1';
+                        $inlineOutput = $this->parseBooleanSetting($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['inlineOutput'] ?? false, false);
                     }
                 }
             }
@@ -143,4 +143,13 @@ class RenderPreProcessorHook
         $params['cssFiles'] = $cssFiles;
     }
 
+    private function parseBooleanSetting(string $value, bool $defaultValue) : bool {
+        if (trim($value) === 'true' || trim($value) === '1') {
+            return true;
+        }
+        if (trim($value) === 'false' || trim($value) === '0') {
+            return false;
+        }
+        return $defaultValue;
+    }
 }
