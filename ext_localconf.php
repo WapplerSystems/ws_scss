@@ -1,9 +1,11 @@
 <?php
-if (!defined('TYPO3_MODE')) {
-    die('Access denied.');
-}
 
-if (TYPO3_MODE === 'FE') {
+use Psr\Http\Message\ServerRequestInterface;
+use TYPO3\CMS\Core\Http\ApplicationType;
+
+if (($GLOBALS['TYPO3_REQUEST'] ?? null) instanceof ServerRequestInterface
+    && ApplicationType::fromRequest($GLOBALS['TYPO3_REQUEST'])->isFrontend()
+) {
     $GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_pagerenderer.php']['render-preProcess']['wsscss'] = \WapplerSystems\WsScss\Hooks\RenderPreProcessorHook::class . '->renderPreProcessorProc';
 }
 
@@ -16,10 +18,4 @@ if (!is_array($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations
             'defaultLifetime' => 0,
         ]
     ];
-}
-
-
-if (!class_exists(\ScssPhp\ScssPhp\Version::class, true)) {
-    $extPath = \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::extPath('ws_scss');
-    require_once $extPath . 'Resources/Private/scssphp/scss.inc.php';
 }
