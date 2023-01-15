@@ -25,6 +25,7 @@ namespace WapplerSystems\WsScss\Hooks;
 use ScssPhp\ScssPhp\Exception\SassException;
 use ScssPhp\ScssPhp\OutputStyle;
 use TYPO3\CMS\Core\Cache\Exception\NoSuchCacheException;
+use TYPO3\CMS\Core\Http\ApplicationType;
 use TYPO3\CMS\Core\Page\PageRenderer;
 use TYPO3\CMS\Core\Resource\Exception\FileDoesNotExistException;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
@@ -60,12 +61,19 @@ class RenderPreProcessorHook
      */
     public function renderPreProcessorProc(array &$params, PageRenderer $pagerenderer): void
     {
+
+        if ($GLOBALS['TYPO3_REQUEST'] == null ||
+            !ApplicationType::fromRequest($GLOBALS['TYPO3_REQUEST'])->isFrontend()
+        ) {
+            return;
+        }
+
         if (!\is_array($params['cssFiles'])) {
             return;
         }
 
         $setup = $GLOBALS['TSFE']->tmpl->setup;
-        if (\is_array($setup['plugin.']['tx_wsscss.']['variables.'])) {
+        if (\is_array($setup['plugin.']['tx_wsscss.']['variables.'] ?? null)) {
 
             $variables = $setup['plugin.']['tx_wsscss.']['variables.'];
 
@@ -108,7 +116,7 @@ class RenderPreProcessorHook
                     }
 
                     if ($file === $keyValue) {
-                        $subConf = $GLOBALS['TSFE']->pSetup['includeCSS.'][$key.'.'] ?? [];
+                        $subConf = $GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.'] ?? [];
 
                         $outputFilePath = $subConf['outputfile'] ?? null;
                         $useSourceMap = $this->parseBooleanSetting($subConf['sourceMap'] ?? false, false);
@@ -143,7 +151,8 @@ class RenderPreProcessorHook
         $params['cssFiles'] = $cssFiles;
     }
 
-    private function parseBooleanSetting(string $value, bool $defaultValue) : bool {
+    private function parseBooleanSetting(string $value, bool $defaultValue): bool
+    {
         if (trim($value) === 'true' || trim($value) === '1') {
             return true;
         }
