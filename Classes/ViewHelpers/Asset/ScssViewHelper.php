@@ -8,6 +8,8 @@ use ScssPhp\ScssPhp\Exception\SassException;
 use TYPO3\CMS\Core\Cache\Exception\NoSuchCacheException;
 use TYPO3\CMS\Core\Page\AssetCollector;
 use TYPO3\CMS\Core\Resource\Exception\FileDoesNotExistException;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Core\Utility\PathUtility;
 use TYPO3Fluid\Fluid\Core\ViewHelper\AbstractTagBasedViewHelper;
 use TYPO3Fluid\Fluid\Core\ViewHelper\TagBuilder;
 use WapplerSystems\WsScss\Compiler;
@@ -114,6 +116,11 @@ class ScssViewHelper extends AbstractTagBasedViewHelper
         ];
 
         if ($file !== null) {
+
+            $scssFilePath = GeneralUtility::getFileAbsFileName($file);
+            $pathChunks = explode('/',PathUtility::getAbsoluteWebPath($scssFilePath));
+            $assetPath = implode('/',array_splice($pathChunks,0,3)).'/';
+            $variables['extAssetPath'] = $assetPath;
 
             $cssFile = Compiler::compileFile($file, $variables, $outputFile);
 

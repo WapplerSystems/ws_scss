@@ -29,6 +29,7 @@ use TYPO3\CMS\Core\Http\ApplicationType;
 use TYPO3\CMS\Core\Page\PageRenderer;
 use TYPO3\CMS\Core\Resource\Exception\FileDoesNotExistException;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Core\Utility\PathUtility;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 use WapplerSystems\WsScss\Compiler;
 
@@ -61,7 +62,6 @@ class RenderPreProcessorHook
      */
     public function renderPreProcessorProc(array &$params, PageRenderer $pagerenderer): void
     {
-
         if ($GLOBALS['TYPO3_REQUEST'] == null ||
             !ApplicationType::fromRequest($GLOBALS['TYPO3_REQUEST'])->isFrontend()
         ) {
@@ -129,11 +129,13 @@ class RenderPreProcessorHook
             }
 
             $scssFilePath = GeneralUtility::getFileAbsFileName($conf['file']);
+            $pathChunks = explode('/', PathUtility::getAbsoluteWebPath($scssFilePath));
+            $assetPath = implode('/', array_splice($pathChunks, 0, 3)) . '/';
 
             if ($inlineOutput) {
                 $useSourceMap = false;
             }
-            $cssFilePath = Compiler::compileFile($scssFilePath, $this->variables, $outputFilePath, $useSourceMap, $outputStyle);
+            $cssFilePath = Compiler::compileFile($scssFilePath, array_merge($this->variables, ['extAssetPath' => $assetPath]), $outputFilePath, $useSourceMap, $outputStyle);
 
             if ($inlineOutput) {
                 unset($cssFiles[$file]);
