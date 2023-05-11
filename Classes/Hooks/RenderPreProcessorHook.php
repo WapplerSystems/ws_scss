@@ -290,7 +290,12 @@ class RenderPreProcessorHook
 				$code .= '@import "'.$dependency.'";'.PHP_EOL;
 			}
 			$code .= '@import "' . $scssFilename . '";';
-			$css = $parser->compile($code);
+            try{
+                $css = $parser->compile($code);
+            } catch(\Exception $e){
+                file_put_contents(dirname(__FILE__).'/scssLog.txt','['.date('c').'] '.$e->getMessage(),FILE_APPEND);
+            }
+
 
 			GeneralUtility::writeFile($cssFilename, $css);
 
