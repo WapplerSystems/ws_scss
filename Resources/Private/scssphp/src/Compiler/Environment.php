@@ -1,4 +1,5 @@
 <?php
+
 /**
  * SCSSPHP
  *
@@ -15,16 +16,18 @@ namespace ScssPhp\ScssPhp\Compiler;
  * Compiler environment
  *
  * @author Anthon Pang <anthon.pang@gmail.com>
+ *
+ * @internal
  */
 class Environment
 {
     /**
-     * @var \ScssPhp\ScssPhp\Block
+     * @var \ScssPhp\ScssPhp\Block|null
      */
     public $block;
 
     /**
-     * @var \ScssPhp\ScssPhp\Compiler\Environment
+     * @var \ScssPhp\ScssPhp\Compiler\Environment|null
      */
     public $parent;
 

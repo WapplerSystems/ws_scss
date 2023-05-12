@@ -4,17 +4,34 @@
     "type": "typo3-cms-extension",
     "homepage": "http://wappler.systems",
     "license": "GPL-2.0-or-later",
+    "keywords": [
+        "TYPO3",
+        "extension",
+        "scss",
+        "sass"
+    ],
     "require": {
-        "typo3/cms-core": "^9.5 || ^10.4",
-        "php": "^7.2",
+        "typo3/cms-core": "^11",
+        "php": "^7.4 || ^8.0",
         "scssphp/scssphp": "^1"
     },
     "replace": {
-        "typo3-ter/ws-scss": "self.version"
     },
     "autoload": {
         "psr-4": {
             "WapplerSystems\\WsScss\\": "Classes/"
         }
-    }
+    },
+    "extra": {
+        "typo3/cms": {
+            "extension-key": "ws_scss"
+        }
+    },
+    "authors": [
+        {
+            "name": "Sven Wappler",
+            "role": "Developer",
+            "homepage": "https://wappler.systems"
+        }
+    ]
 }
