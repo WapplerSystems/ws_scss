@@ -54,13 +54,13 @@ class RenderPreProcessorHook
      * Main hook function
      *
      * @param array $params Array of CSS/javascript and other files
-     * @param PageRenderer $pagerenderer Pagerenderer object
+     * @param PageRenderer $pageRenderer Pagerenderer object
      * @return void
      * @throws FileDoesNotExistException
      * @throws NoSuchCacheException
      * @throws SassException
      */
-    public function renderPreProcessorProc(array &$params, PageRenderer $pagerenderer): void
+    public function renderPreProcessorProc(array &$params, PageRenderer $pageRenderer): void
     {
         if ($GLOBALS['TYPO3_REQUEST'] == null ||
             !ApplicationType::fromRequest($GLOBALS['TYPO3_REQUEST'])->isFrontend()
