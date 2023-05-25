@@ -108,6 +108,7 @@ class RenderPreProcessorHook
             $outputFilePath = null;
             $outputStyle = OutputStyle::COMPRESSED;
             $variables = [];
+            $unlink = false;
 
             // search settings for scss file
             if (is_array($GLOBALS['TSFE']->pSetup['includeCSS.'] ?? [])) {
@@ -121,6 +122,7 @@ class RenderPreProcessorHook
 
                         $outputFilePath = $subConf['outputfile'] ?? null;
                         $useSourceMap = $this->parseBooleanSetting($subConf['sourceMap'] ?? false, false);
+                        $unlink = $this->parseBooleanSetting($subConf['unlink'] ?? false, false);
                         if (isset($subConf['outputStyle']) && ($subConf['outputStyle'] === 'expanded' || $subConf['outputStyle'] === 'compressed')) {
                             $outputStyle = $subConf['outputStyle'];
                         }
@@ -139,7 +141,9 @@ class RenderPreProcessorHook
             }
             $cssFilePath = Compiler::compileFile($scssFilePath, array_merge($this->variables, ['extAssetPath' => $assetPath], $variables), $outputFilePath, $useSourceMap, $outputStyle);
 
-            if ($inlineOutput) {
+            if ($unlink) {
+                unset($cssFiles[$file]);
+            } else if ($inlineOutput) {
                 unset($cssFiles[$file]);
 
                 // TODO: compression
