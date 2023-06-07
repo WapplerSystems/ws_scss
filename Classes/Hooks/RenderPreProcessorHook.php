@@ -141,18 +141,20 @@ class RenderPreProcessorHook
             }
             $cssFilePath = Compiler::compileFile($scssFilePath, array_merge($this->variables, ['extAssetPath' => $assetPath], $variables), $outputFilePath, $useSourceMap, $outputStyle);
 
-            if ($unlink) {
-                unset($cssFiles[$file]);
-            } else if ($inlineOutput) {
-                unset($cssFiles[$file]);
-
+            if ($inlineOutput) {
                 // TODO: compression
                 $params['cssInline'][$file] = [
                     'code' => file_get_contents(GeneralUtility::getFileAbsFileName($cssFilePath)),
                     'forceOnTop' => false,
                 ];
-            } else {
-                $cssFiles[$cssFilePath] = $params['cssFiles'][$file];
+            } else if (!$unlink) {
+
+                unset($conf['tagAttributes']['inlineOutput']);
+                unset($conf['tagAttributes']['sourceMap']);
+                unset($conf['tagAttributes']['variables.']);
+                unset($conf['tagAttributes']['outputfile']);
+
+                $cssFiles[$cssFilePath] = $conf;
                 $cssFiles[$cssFilePath]['file'] = $cssFilePath;
             }
         }
