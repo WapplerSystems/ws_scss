@@ -177,6 +177,13 @@ class Compiler
         } // hash variables too
 
         $imports = self::collectImports($content);
+        foreach ($imports as $index => $import) {
+            if (str_ends_with($import, '/') && is_dir($pathInfo['dirname'] . '/' . $import)) {
+                $files = scandir($pathInfo['dirname'] . '/' . $import);
+                $files = preg_filter('/^(.+?)\.s?css$/', $import . '$1', $files);
+                array_splice($imports, $index, 1, $files);
+            }
+        }
         foreach ($imports as $import) {
             $hashImport = '';
 
