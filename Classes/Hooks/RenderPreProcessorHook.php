@@ -99,6 +99,8 @@ class RenderPreProcessorHook
             $useSourceMap = false;
             $outputFilePath = null;
             $outputStyle = OutputStyle::COMPRESSED;
+            $variables = [];
+            $unlink = false;
 
             // search settings for scss file
             if (is_array($GLOBALS['TSFE']->pSetup['includeCSS.'] ?? [])) {
@@ -112,9 +114,11 @@ class RenderPreProcessorHook
 
                         $outputFilePath = $subConf['outputfile'] ?? null;
                         $useSourceMap = $this->parseBooleanSetting($subConf['sourceMap'] ?? false, false);
+                        $unlink = $this->parseBooleanSetting($subConf['unlink'] ?? false, false);
                         if (isset($subConf['outputStyle']) && ($subConf['outputStyle'] === 'expanded' || $subConf['outputStyle'] === 'compressed')) {
                             $outputStyle = $subConf['outputStyle'];
                         }
+                        $variables = array_filter($subConf['variables.'] ?? []);
                         $inlineOutput = $this->parseBooleanSetting($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['inlineOutput'] ?? false, false);
                     }
                 }
@@ -125,7 +129,7 @@ class RenderPreProcessorHook
             if ($inlineOutput) {
                 $useSourceMap = false;
             }
-            $cssFilePath = Compiler::compileFile($scssFilePath, $this->variables, $outputFilePath, $useSourceMap, $outputStyle);
+            $cssFilePath = Compiler::compileFile($scssFilePath, array_merge($this->variables,$variables), $outputFilePath, $useSourceMap, $outputStyle);
 
             if ($inlineOutput) {
                 unset($cssFiles[$file]);
@@ -135,7 +139,7 @@ class RenderPreProcessorHook
                     'code' => file_get_contents(GeneralUtility::getFileAbsFileName($cssFilePath)),
                     'forceOnTop' => false,
                 ];
-            } else {
+            } else if (!$unlink) {
                 $cssFiles[$cssFilePath] = $params['cssFiles'][$file];
                 $cssFiles[$cssFilePath]['file'] = $cssFilePath;
             }
