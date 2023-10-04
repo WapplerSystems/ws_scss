@@ -60,33 +60,12 @@ class Compiler
     public static function compileFile(string $scssFilePath, array $variables, string $cssFilePath = null, bool $useSourceMap = false, string $outputStyle = OutputStyle::COMPRESSED): string
     {
         $scssFilePath = GeneralUtility::getFileAbsFileName($scssFilePath);
-        $variablesHash = \count($variables) > 0 ? hash('md5', implode(',', $variables)) : null;
-        $sitePath = Environment::getPublicPath() . '/';
 
         if (!file_exists($scssFilePath)) {
             throw new FileDoesNotExistException($scssFilePath);
         }
 
-        if ($cssFilePath === null) {
-            // no target filename -> auto
-
-            $pathInfo = pathinfo($scssFilePath);
-            $filename = $pathInfo['filename'];
-            $outputDir = 'typo3temp/assets/css/';
-
-
-            $outputDir = str_ends_with($outputDir, '/') ? $outputDir : $outputDir . '/';
-            if (!strcmp(substr($outputDir, 0, 4), 'EXT:')) {
-                [$extKey, $script] = explode('/', substr($outputDir, 4), 2);
-                if ($extKey && ExtensionManagementUtility::isLoaded($extKey)) {
-                    $extPath = ExtensionManagementUtility::extPath($extKey);
-                    $outputDir = substr($extPath, \strlen($sitePath)) . $script;
-                }
-            }
-
-            $cssFilePath = $outputDir . $filename . ($variablesHash ? '_' . $variablesHash : '')  . '.css';
-        }
-
+        
         /** @var FileBackend $cache */
         $cache = GeneralUtility::makeInstance(CacheManager::class)->getCache('ws_scss');
 
@@ -108,7 +87,7 @@ class Compiler
 
 
         // Sass compiler cache
-        $cacheDir = $sitePath . 'typo3temp/assets/scss/cache/';
+        $cacheDir = Environment::getPublicPath() . '/typo3temp/assets/scss/cache/';
         if (!is_dir($cacheDir)) {
             GeneralUtility::mkdir_deep($cacheDir);
         }
