@@ -14,10 +14,10 @@ use TYPO3\CMS\Core\Resource\Exception\FileDoesNotExistException;
 use TYPO3\CMS\Core\Utility\DebugUtility;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use WapplerSystems\WsScss\Event\AfterScssCompilationEvent;
 
 class Compiler
 {
-
 
     /**
      * @param $scssContent
@@ -138,9 +138,17 @@ class Compiler
 
         try {
             $result = $parser->compileString('@import "' . $scssFilePath . '";');
-            $cache->set($cacheKey, $calculatedContentHash, ['scss'], 0);
+	        $cssCode = $result->getCss();
+
+	        $eventDispatcher = GeneralUtility::makeInstance(\Psr\EventDispatcher\EventDispatcherInterface::class);
+	        $event = $eventDispatcher->dispatch(
+		        new AfterScssCompilationEvent($cssCode)
+	        );
+	        $cssCode = $event->getCssCode();
+
+	        $cache->set($cacheKey, $calculatedContentHash, ['scss'], 0);
             GeneralUtility::mkdir_deep(dirname(GeneralUtility::getFileAbsFileName($cssFilePath)));
-            GeneralUtility::writeFile(GeneralUtility::getFileAbsFileName($cssFilePath), $result->getCss());
+            GeneralUtility::writeFile(GeneralUtility::getFileAbsFileName($cssFilePath), $cssCode);
         } catch (\Exception $ex) {
             DebugUtility::debug($ex->getMessage());
 
