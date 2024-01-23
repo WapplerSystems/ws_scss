@@ -60,7 +60,7 @@ class Compiler
     public static function compileFile(string $scssFilePath, array $variables, string $cssFilePath = null, bool $useSourceMap = false, string $outputStyle = OutputStyle::COMPRESSED): string
     {
         $scssFilePath = GeneralUtility::getFileAbsFileName($scssFilePath);
-        $variablesHash = \count($variables) > 0 ? hash('md5', implode(',', $variables)) : null;
+        $variablesHash = hash('md5', implode(',', $variables) . $scssFilePath);
         $sitePath = Environment::getPublicPath() . '/';
 
         if (!file_exists($scssFilePath)) {
