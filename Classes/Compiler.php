@@ -188,6 +188,10 @@ class Compiler
         foreach ($imports as $import) {
             $hashImport = '';
 
+            if (str_ends_with($import, '/') && is_dir($pathInfo['dirname'] . '/' . $import)) {
+                $import = $import . '_index';
+            }
+
             if (file_exists($pathInfo['dirname'] . '/' . $import . '.scss')) {
                 $hashImport = self::calculateContentHash($pathInfo['dirname'] . '/' . $import . '.scss', $visitedFiles);
             } else {
