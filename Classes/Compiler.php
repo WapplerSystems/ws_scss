@@ -138,15 +138,15 @@ class Compiler
 
         try {
             $result = $parser->compileString('@import "' . $scssFilePath . '";');
-	        $cssCode = $result->getCss();
+            $cssCode = $result->getCss();
 
-	        $eventDispatcher = GeneralUtility::makeInstance(\Psr\EventDispatcher\EventDispatcherInterface::class);
-	        $event = $eventDispatcher->dispatch(
-		        new AfterScssCompilationEvent($cssCode)
-	        );
-	        $cssCode = $event->getCssCode();
+            $eventDispatcher = GeneralUtility::makeInstance(\Psr\EventDispatcher\EventDispatcherInterface::class);
+            $event = $eventDispatcher->dispatch(
+                new AfterScssCompilationEvent($cssCode)
+            );
+            $cssCode = $event->getCssCode();
 
-	        $cache->set($cacheKey, $calculatedContentHash, ['scss'], 0);
+            $cache->set($cacheKey, $calculatedContentHash, ['scss'], 0);
             GeneralUtility::mkdir_deep(dirname(GeneralUtility::getFileAbsFileName($cssFilePath)));
             GeneralUtility::writeFile(GeneralUtility::getFileAbsFileName($cssFilePath), $cssCode);
         } catch (\Exception $ex) {
