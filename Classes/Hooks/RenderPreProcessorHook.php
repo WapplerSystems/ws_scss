@@ -98,7 +98,7 @@ class RenderPreProcessorHook
         foreach ($params['cssFiles'] as $file => $conf) {
             $pathInfo = pathinfo($conf['file']);
 
-            if ($pathInfo['extension'] !== 'scss') {
+            if (!isset($pathInfo['extension']) || $pathInfo['extension'] !== 'scss') {
                 $cssFiles[$file] = $conf;
                 continue;
             }
