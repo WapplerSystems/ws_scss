@@ -117,6 +117,8 @@ class ScssViewHelper extends AbstractTagBasedViewHelper
             'priority' => $this->arguments['priority']
         ];
 
+        $variables = $this->cleanVariables($variables);
+
         if ($file !== null) {
 
             $scssFilePath = GeneralUtility::getFileAbsFileName($file);
@@ -149,6 +151,19 @@ class ScssViewHelper extends AbstractTagBasedViewHelper
 
         }
         return '';
+    }
+
+    private function cleanVariables($variables): array
+    {
+        foreach ($variables as $key => $value) {
+            if (is_array($value)) {
+                $variables[$key] = $this->cleanVariables($variables[$key]);
+            }
+            if (empty($variables[$key])) {
+                unset($variables[$key]);
+            }
+        }
+        return $variables;
     }
 
 }
