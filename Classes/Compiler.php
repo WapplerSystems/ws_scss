@@ -34,12 +34,12 @@ class Compiler
     {
 
         $hash = sha1($scssContent);
-        $tempScssFilePath = 'typo3temp/assets/scss/' . $hash.'.scss';
+        $tempScssFilePath = 'typo3temp/assets/scss/' . $hash . '.scss';
         $absoluteTempScssFilePath = GeneralUtility::getFileAbsFileName($tempScssFilePath);
 
         if (!file_exists($absoluteTempScssFilePath)) {
             GeneralUtility::mkdir_deep(dirname($absoluteTempScssFilePath));
-            GeneralUtility::writeFile($absoluteTempScssFilePath,$scssContent);
+            GeneralUtility::writeFile($absoluteTempScssFilePath, $scssContent);
         }
 
         return self::compileFile($tempScssFilePath, $variables, $cssFilename, $useSourceMap, $outputStyle);
@@ -84,7 +84,7 @@ class Compiler
                 }
             }
 
-            $cssFilePath = $outputDir . $filename . ($variablesHash ? '_' . $variablesHash : '')  . '.css';
+            $cssFilePath = $outputDir . $filename . ($variablesHash ? '_' . $variablesHash : '') . '.css';
         }
 
         /** @var FileBackend $cache */
@@ -138,15 +138,15 @@ class Compiler
 
         try {
             $result = $parser->compileString('@import "' . $scssFilePath . '";');
-	        $cssCode = $result->getCss();
+            $cssCode = $result->getCss();
 
-	        $eventDispatcher = GeneralUtility::makeInstance(\Psr\EventDispatcher\EventDispatcherInterface::class);
-	        $event = $eventDispatcher->dispatch(
-		        new AfterScssCompilationEvent($cssCode)
-	        );
-	        $cssCode = $event->getCssCode();
+            $eventDispatcher = GeneralUtility::makeInstance(\Psr\EventDispatcher\EventDispatcherInterface::class);
+            $event = $eventDispatcher->dispatch(
+                new AfterScssCompilationEvent($cssCode)
+            );
+            $cssCode = $event->getCssCode();
 
-	        $cache->set($cacheKey, $calculatedContentHash, ['scss'], 0);
+            $cache->set($cacheKey, $calculatedContentHash, ['scss'], 0);
             GeneralUtility::mkdir_deep(dirname(GeneralUtility::getFileAbsFileName($cssFilePath)));
             GeneralUtility::writeFile(GeneralUtility::getFileAbsFileName($cssFilePath), $cssCode);
         } catch (\Exception $ex) {
