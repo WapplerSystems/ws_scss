@@ -126,7 +126,11 @@ class ScssViewHelper extends AbstractTagBasedViewHelper
                 throw new ContentRenderingException('Could not resolve the path to the SCSS file. Probably the path is not correct! Path: '.$file);
             }
             $pathChunks = explode('/',PathUtility::getAbsoluteWebPath($scssFilePath));
-            $assetPath = implode('/',array_splice($pathChunks,0,3)).'/';
+            if (self::usesComposerClassLoading()) {
+                $assetPath = implode('/',array_splice($pathChunks,0,3)).'/';
+            } else {
+                $assetPath = implode('/',array_splice($pathChunks,0,6)).'/';
+            }
             $variables['extAssetPath'] = $assetPath;
 
             $cssFile = Compiler::compileFile($file, $variables, $outputFile);
@@ -164,6 +168,11 @@ class ScssViewHelper extends AbstractTagBasedViewHelper
             }
         }
         return $variables;
+    }
+
+    protected static function usesComposerClassLoading(): bool
+    {
+        return defined('TYPO3_COMPOSER_MODE') && TYPO3_COMPOSER_MODE;
     }
 
 }

@@ -134,7 +134,11 @@ class RenderPreProcessorHook
 
             $scssFilePath = GeneralUtility::getFileAbsFileName($conf['file']);
             $pathChunks = explode('/', PathUtility::getAbsoluteWebPath($scssFilePath));
-            $assetPath = implode('/', array_splice($pathChunks, 0, 3)) . '/';
+            if (self::usesComposerClassLoading()) {
+                $assetPath = implode('/',array_splice($pathChunks,0,3)).'/';
+            } else {
+                $assetPath = implode('/',array_splice($pathChunks,0,6)).'/';
+            }
 
             if ($inlineOutput) {
                 $useSourceMap = false;
@@ -170,5 +174,10 @@ class RenderPreProcessorHook
             return false;
         }
         return $defaultValue;
+    }
+
+    protected static function usesComposerClassLoading(): bool
+    {
+        return defined('TYPO3_COMPOSER_MODE') && TYPO3_COMPOSER_MODE;
     }
 }
