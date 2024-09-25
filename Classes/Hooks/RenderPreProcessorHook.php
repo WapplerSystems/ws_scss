@@ -72,7 +72,7 @@ class RenderPreProcessorHook
             return;
         }
 
-        $setup = $GLOBALS['TSFE']->tmpl->setup;
+        $setup = $GLOBALS['TYPO3_REQUEST']->getAttribute('frontend.typoscript')->getSetupArray();
         if (\is_array($setup['plugin.']['tx_wsscss.']['variables.'] ?? null)) {
 
             $variables = $setup['plugin.']['tx_wsscss.']['variables.'];
@@ -111,14 +111,14 @@ class RenderPreProcessorHook
             $unlink = false;
 
             // search settings for scss file
-            if (is_array($GLOBALS['TSFE']->pSetup['includeCSS.'] ?? [])) {
-                foreach ($GLOBALS['TSFE']->pSetup['includeCSS.'] as $key => $keyValue) {
+            if (is_array($setup['page.']['includeCSS.'] ?? [])) {
+                foreach ($setup['page.']['includeCSS.'] as $key => $keyValue) {
                     if (str_ends_with($key, '.')) {
                         continue;
                     }
 
                     if ($file === $keyValue) {
-                        $subConf = $GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.'] ?? [];
+                        $subConf = $setup['page.']['includeCSS.'][$key . '.'] ?? [];
 
                         $outputFilePath = $subConf['outputfile'] ?? null;
                         $useSourceMap = $this->parseBooleanSetting($subConf['sourceMap'] ?? false, false);
@@ -127,7 +127,7 @@ class RenderPreProcessorHook
                             $outputStyle = $subConf['outputStyle'];
                         }
                         $variables = array_filter($subConf['variables.'] ?? []);
-                        $inlineOutput = $this->parseBooleanSetting($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['inlineOutput'] ?? false, false);
+                        $inlineOutput = $this->parseBooleanSetting($setup['page.']['includeCSS.'][$key . '.']['inlineOutput'] ?? false, false);
                     }
                 }
             }
