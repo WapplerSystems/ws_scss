@@ -22,6 +22,7 @@ namespace WapplerSystems\WsScss\Hooks;
  *  This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
 
+use Psr\EventDispatcher\EventDispatcherInterface;
 use ScssPhp\ScssPhp\Exception\SassException;
 use ScssPhp\ScssPhp\OutputStyle;
 use TYPO3\CMS\Core\Cache\Exception\NoSuchCacheException;
@@ -32,6 +33,7 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\PathUtility;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 use WapplerSystems\WsScss\Compiler;
+use WapplerSystems\WsScss\Event\AfterVariableDefinitionEvent;
 
 /**
  * Hook to preprocess scss files
@@ -92,6 +94,10 @@ class RenderPreProcessorHook
             }
             $this->variables = $parsedTypoScriptVariables;
         }
+
+        $eventDispatcher = GeneralUtility::makeInstance(EventDispatcherInterface::class);
+        $event = $eventDispatcher->dispatch(new AfterVariableDefinitionEvent($this->variables));
+        $this->variables = $event->getVariables();
 
         // we need to rebuild the CSS array to keep order of CSS files
         $cssFiles = [];
