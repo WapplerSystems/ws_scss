@@ -15,3 +15,5 @@ if (!is_array($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations
         ]
     ];
 }
+
+$GLOBALS['TYPO3_CONF_VARS']['SYS']['fluid']['namespaces']['wsscss'] = ['WapplerSystems\\WsScss\\ViewHelpers'];
