@@ -57,7 +57,7 @@ class Compiler
      * @throws NoSuchCacheException
      * @throws SassException
      */
-    public static function compileFile(string $scssFilePath, array $variables, string $cssFilePath = null, bool $useSourceMap = false, string $outputStyle = OutputStyle::COMPRESSED): string
+    public static function compileFile(string $scssFilePath, array $variables, ?string $cssFilePath = null, bool $useSourceMap = false, string $outputStyle = OutputStyle::COMPRESSED): string
     {
         $scssFilePath = GeneralUtility::getFileAbsFileName($scssFilePath);
         $variablesHash = hash('md5', implode(',', $variables) . $scssFilePath);
