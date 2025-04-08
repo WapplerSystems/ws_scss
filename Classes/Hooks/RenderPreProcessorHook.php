@@ -151,7 +151,7 @@ class RenderPreProcessorHook
             }
             $cssFilePath = Compiler::compileFile($scssFilePath, array_merge($this->variables, ['extAssetPath' => $assetPath], $variables), $outputFilePath, $useSourceMap, $outputStyle);
 
-            if ($inlineOutput) {
+            if ($inlineOutput && file_exists(GeneralUtility::getFileAbsFileName($cssFilePath))) {
                 // TODO: compression
                 $params['cssInline'][$file] = [
                     'code' => file_get_contents(GeneralUtility::getFileAbsFileName($cssFilePath)),

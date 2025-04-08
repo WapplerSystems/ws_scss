@@ -3,7 +3,12 @@
 namespace WapplerSystems\WsScss;
 
 use ScssPhp\ScssPhp\Exception\SassException;
+use ScssPhp\ScssPhp\Importer\LegacyCallbackImporter;
 use ScssPhp\ScssPhp\OutputStyle;
+use ScssPhp\ScssPhp\Value\SassColor;
+use ScssPhp\ScssPhp\Value\SassNumber;
+use ScssPhp\ScssPhp\Value\SassString;
+use ScssPhp\ScssPhp\ValueConverter;
 use TYPO3\CMS\Core\Cache\Backend\FileBackend;
 use TYPO3\CMS\Core\Cache\CacheManager;
 use TYPO3\CMS\Core\Cache\Exception\NoSuchCacheException;
@@ -14,6 +19,7 @@ use TYPO3\CMS\Core\Resource\Exception\FileDoesNotExistException;
 use TYPO3\CMS\Core\Utility\DebugUtility;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Core\Utility\PathUtility;
 use WapplerSystems\WsScss\Event\AfterScssCompilationEvent;
 
 class Compiler
@@ -30,8 +36,11 @@ class Compiler
      * @throws NoSuchCacheException
      * @throws SassException
      */
-    public static function compileSassString($scssContent, $variables, $cssFilename = null, bool $useSourceMap = false, string $outputStyle = OutputStyle::COMPRESSED): string
+    public static function compileSassString($scssContent, $variables, $cssFilename = null, bool $useSourceMap = false, ?OutputStyle $outputStyle = null): string
     {
+        if ($outputStyle === null) {
+            $outputStyle = OutputStyle::COMPRESSED;
+        }
 
         $hash = sha1($scssContent);
         $tempScssFilePath = 'typo3temp/assets/scss/' . $hash . '.scss';
@@ -57,8 +66,11 @@ class Compiler
      * @throws NoSuchCacheException
      * @throws SassException
      */
-    public static function compileFile(string $scssFilePath, array $variables, ?string $cssFilePath = null, bool $useSourceMap = false, string $outputStyle = OutputStyle::COMPRESSED): string
+    public static function compileFile(string $scssFilePath, array $variables, ?string $cssFilePath = null, bool $useSourceMap = false, ?OutputStyle $outputStyle = null): string
     {
+        if ($outputStyle === null) {
+            $outputStyle = OutputStyle::COMPRESSED;
+        }
         $scssFilePath = GeneralUtility::getFileAbsFileName($scssFilePath);
         $variablesHash = hash('md5', implode(',', $variables) . $scssFilePath);
         $sitePath = Environment::getPublicPath() . '/';
@@ -97,7 +109,7 @@ class Compiler
             $calculatedContentHash .= 'sm';
         }
 
-        $calculatedContentHash .= $outputStyle;
+        $calculatedContentHash .= $outputStyle->value;
 
         if ($cache->has($cacheKey)) {
             $contentHashCache = $cache->get($cacheKey);
@@ -117,14 +129,20 @@ class Compiler
             return '';
         }
 
-        $cacheOptions = [
-            'cacheDir' => $cacheDir,
-            'prefix' => md5($cssFilePath),
-        ];
+        $convertedVariables = [];
+        foreach ($variables as $varName => $varValue) {
+            if (str_ends_with($varValue, 'rem')) {
+                $convertedVariables[$varName] = SassNumber::create((float)$varValue, 'rem');
+            } elseif (str_starts_with($varValue, '#')) {
+                $rgb = self::hex2rgb($varValue);
+                $convertedVariables[$varName] = SassColor::rgb($rgb[0], $rgb[1], $rgb[2]);
+            } else {
+                $convertedVariables[$varName] = ValueConverter::fromPhp($varValue);
+            }
+        }
 
-
-        $parser = new \ScssPhp\ScssPhp\Compiler($cacheOptions);
-        $parser->addVariables($variables);
+        $parser = new \ScssPhp\ScssPhp\Compiler();
+        $parser->addVariables($convertedVariables);
         $parser->setOutputStyle($outputStyle);
 
         if ($useSourceMap) {
@@ -136,8 +154,63 @@ class Compiler
             ]);
         }
 
+
+        $visualImportPath = dirname($scssFilePath);
+
+        $parser->addImporter(new LegacyCallbackImporter(function ($url) use ($visualImportPath): ?string {
+            // Resolve potential back paths manually using PathUtility::getCanonicalPath,
+            // but make sure we do not break out of TYPO3 application path using GeneralUtility::getFileAbsFileName
+            // Also resolve EXT: paths if given
+            $url = str_replace('ext:', 'EXT:', $url);
+            $isTypo3Absolute = (str_starts_with($url, 'EXT:')) || PathUtility::isAbsolutePath($url);
+            $fileName = $isTypo3Absolute ? $url : $visualImportPath . '/' . $url;
+            $full = GeneralUtility::getFileAbsFileName(PathUtility::getCanonicalPath($fileName));
+            // The API forces us to check the existence of files paths, with or without url.
+            // We must only return a string if the file to be imported actually exists.
+            $hasExtension = (bool) preg_match('/[.]s?css$/', $url);
+            if (
+                is_file($file = pathinfo($full, PATHINFO_DIRNAME) . '/' . basename($full) . '.scss') ||
+                is_file($file = pathinfo($full, PATHINFO_DIRNAME) . '/_' . basename($full) . '.scss') ||
+                ($hasExtension && is_file($file = $full))
+            ) {
+                // We could trigger a deprecation message here at some point
+                return $file;
+            }
+
+            return null;
+        }));
+
+
+        $absoluteFilePath = dirname($scssFilePath);
+        $relativeFilePath = PathUtility::getAbsoluteWebPath($absoluteFilePath);
+
+        $parser->registerFunction(
+            'url',
+            function ($args) use (
+                $parser,
+                $absoluteFilePath,
+                $relativeFilePath
+            ): SassString {
+                $marker = $args[0][1];
+                $args[0][1] = '';
+                $result = $parser->compileValue($args[0]);
+                if (str_starts_with($result,'data:')) {
+                    return new SassString('url(' . $marker . $result . $marker . ')', false);
+                }
+                if (is_file(PathUtility::getCanonicalPath($absoluteFilePath . '/' . $result))) {
+                    $result = PathUtility::getAbsoluteWebPath(PathUtility::getCanonicalPath($relativeFilePath . '/' . $result));
+                } elseif (str_starts_with($result, 'EXT:') && is_file(GeneralUtility::getFileAbsFileName($result))) {
+                    $result = PathUtility::getAbsoluteWebPath(GeneralUtility::getFileAbsFileName($result));
+                }
+                //$result = str_starts_with($result, '/') ? substr($result, 1) : $result;
+
+                return new SassString( 'url(' . $marker . $result . $marker . ')', false);
+            },
+            [0 => 'string']
+        );
+
         try {
-            $result = $parser->compileString('@import "' . $scssFilePath . '";');
+            $result = $parser->compileFile($scssFilePath);
             $cssCode = $result->getCss();
 
             $eventDispatcher = GeneralUtility::makeInstance(\Psr\EventDispatcher\EventDispatcherInterface::class);
@@ -232,6 +305,21 @@ class Compiler
         }
 
         return $imports;
+    }
+
+    private static function hex2rgb($hex)
+    {
+        $hex = str_replace("#", "", $hex);
+        if (strlen($hex) === 3) {
+            $r = hexdec($hex[0] . $hex[0]);
+            $g = hexdec($hex[1] . $hex[1]);
+            $b = hexdec($hex[2] . $hex[2]);
+        } else {
+            $r = hexdec(substr($hex, 0, 2));
+            $g = hexdec(substr($hex, 2, 2));
+            $b = hexdec(substr($hex, 4, 2));
+        }
+        return [$r, $g, $b];
     }
 
 }
