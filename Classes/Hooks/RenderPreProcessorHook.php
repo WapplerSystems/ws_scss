@@ -129,8 +129,12 @@ class RenderPreProcessorHook
                         $outputFilePath = $subConf['outputfile'] ?? null;
                         $useSourceMap = $this->parseBooleanSetting($subConf['sourceMap'] ?? false, false);
                         $unlink = $this->parseBooleanSetting($subConf['unlink'] ?? false, false);
-                        if (isset($subConf['outputStyle']) && ($subConf['outputStyle'] === 'expanded' || $subConf['outputStyle'] === 'compressed')) {
-                            $outputStyle = $subConf['outputStyle'];
+                        if (isset($subConf['outputStyle'])) {
+                            if ($subConf['outputStyle'] === 'expanded') {
+                                $outputStyle = OutputStyle::EXPANDED;
+                            } elseif ($subConf['outputStyle'] === 'compressed') {
+                                $outputStyle = OutputStyle::COMPRESSED;
+                            }
                         }
                         $variables = array_filter($subConf['variables.'] ?? []);
                         $inlineOutput = $this->parseBooleanSetting($setup['page.']['includeCSS.'][$key . '.']['inlineOutput'] ?? false, false);
