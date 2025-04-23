@@ -102,7 +102,7 @@ class Compiler
         /** @var FileBackend $cache */
         $cache = GeneralUtility::makeInstance(CacheManager::class)->getCache('ws_scss');
 
-        $cacheKey = hash('sha1', $scssFilePath);
+        $cacheKey = hash('sha1', $scssFilePath . ($variablesHash ?? ''));
         $calculatedContentHash = self::calculateContentHash($scssFilePath, $variables);
         $calculatedContentHash .= md5($cssFilePath);
         if ($useSourceMap) {
