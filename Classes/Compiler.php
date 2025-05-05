@@ -133,6 +133,8 @@ class Compiler
         foreach ($variables as $varName => $varValue) {
             if (str_ends_with($varValue, 'rem')) {
                 $convertedVariables[$varName] = SassNumber::create((float)$varValue, 'rem');
+            } elseif (str_ends_with($varValue, 'px')) {
+                $convertedVariables[$varName] = SassNumber::create((int)$varValue, 'px');
             } elseif (str_starts_with($varValue, '#')) {
                 $rgb = self::hex2rgb($varValue);
                 $convertedVariables[$varName] = SassColor::rgb($rgb[0], $rgb[1], $rgb[2]);
