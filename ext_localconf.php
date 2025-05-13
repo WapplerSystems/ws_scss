@@ -20,5 +20,5 @@ $GLOBALS['TYPO3_CONF_VARS']['SYS']['fluid']['namespaces']['wsscss'] = ['WapplerS
 
 if (!class_exists(\ScssPhp\ScssPhp\Version::class, true)) {
     $extPath = \TYPO3\CMS\Core\Utility\ExtensionManagementUtility::extPath('ws_scss');
-    require_once $extPath . 'Resources/Private/scssphp/scss.inc.php';
+    require_once $extPath . 'Resources/Private/PHP/ClassLoader.inc.php';
 }
