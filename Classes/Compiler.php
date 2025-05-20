@@ -138,6 +138,8 @@ class Compiler
             } elseif (str_starts_with($varValue, '#')) {
                 $rgb = self::hex2rgb($varValue);
                 $convertedVariables[$varName] = SassColor::rgb($rgb[0], $rgb[1], $rgb[2]);
+            } elseif (str_contains($varName,'font-family')) {
+                $convertedVariables[$varName] = new SassString($varValue, false);
             } else {
                 $convertedVariables[$varName] = ValueConverter::fromPhp($varValue);
             }
