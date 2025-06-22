@@ -45,7 +45,6 @@ use ScssPhp\ScssPhp\Value\SassNumber;
 use ScssPhp\ScssPhp\Value\SassString;
 use ScssPhp\ScssPhp\Value\Value;
 use ScssPhp\ScssPhp\Visitor\CssVisitor;
-use TYPO3\CMS\Core\Utility\DebugUtility;
 
 final class Compiler
 {
