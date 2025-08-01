@@ -80,16 +80,17 @@ class RenderPreProcessorHook
             $variables = $setup['plugin.']['tx_wsscss.']['variables.'];
 
             $parsedTypoScriptVariables = [];
-            foreach ($variables as $variable => $key) {
+
+            if ($this->contentObjectRenderer === null) {
+                $this->contentObjectRenderer = GeneralUtility::makeInstance(ContentObjectRenderer::class);
+            }
+
+            foreach ($variables as $variable => $variableValue) {
                 if (array_key_exists($variable . '.', $variables)) {
-                    if ($this->contentObjectRenderer === null) {
-                        $this->contentObjectRenderer = GeneralUtility::makeInstance(ContentObjectRenderer::class);
-                    }
                     $content = $this->contentObjectRenderer->cObjGetSingle($variables[$variable], $variables[$variable . '.']);
                     $parsedTypoScriptVariables[$variable] = $content;
-
                 } elseif (!str_ends_with($variable, '.')) {
-                    $parsedTypoScriptVariables[$variable] = $key;
+                    $parsedTypoScriptVariables[$variable] = $variableValue;
                 }
             }
             $this->variables = $parsedTypoScriptVariables;

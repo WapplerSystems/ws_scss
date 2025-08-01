@@ -5,12 +5,12 @@ namespace WapplerSystems\WsScss;
 use League\Uri\Uri;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use ScssPhp\ScssPhp\Exception\SassException;
-use ScssPhp\ScssPhp\Importer\FilesystemImporter;
 use ScssPhp\ScssPhp\OutputStyle;
 use ScssPhp\ScssPhp\Util\Path;
 use ScssPhp\ScssPhp\Value\SassColor;
 use ScssPhp\ScssPhp\Value\SassNumber;
 use ScssPhp\ScssPhp\Value\SassString;
+use ScssPhp\ScssPhp\Value\Value;
 use ScssPhp\ScssPhp\ValueConverter;
 use TYPO3\CMS\Core\Cache\Backend\FileBackend;
 use TYPO3\CMS\Core\Cache\CacheManager;
@@ -25,10 +25,13 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\PathUtility;
 use WapplerSystems\WsScss\Event\AfterScssCompilationEvent;
 use WapplerSystems\WsScss\Importer\ExtensionFilesystemImporter;
+use WapplerSystems\WsScss\Importer\FilesystemImporter;
 use WapplerSystems\WsScss\Importer\VariableFilesystemImporter;
 
 class Compiler
 {
+
+    public static string $CURRENT_LOAD_PATH = '';
 
     /**
      * @param $scssContent
@@ -118,6 +121,12 @@ class Compiler
 
         $convertedVariables = [];
         foreach ($variables as $varName => $varValue) {
+
+            if ($varValue instanceof Value) {
+                $convertedVariables[$varName] = $varValue;
+                continue;
+            }
+
             if (str_ends_with($varValue, 'rem')) {
                 $convertedVariables[$varName] = SassNumber::create((float)$varValue, 'rem');
             } elseif (str_ends_with($varValue, 'px')) {
@@ -154,6 +163,7 @@ class Compiler
 
         $visualImportPath = dirname($scssFilePath);
 
+        self::$CURRENT_LOAD_PATH = '';
         $importers = [
             new ExtensionFilesystemImporter($visualImportPath),
             new VariableFilesystemImporter($absoluteFilePath, $scssCompiler),
@@ -180,8 +190,11 @@ class Compiler
                 }
                 if (is_file(PathUtility::getCanonicalPath($absoluteFilePath . '/' . $result))) {
                     $result = PathUtility::getAbsoluteWebPath(PathUtility::getCanonicalPath($relativeFilePath . '/' . $result));
-                } elseif (str_starts_with($result, 'EXT:') && is_file(GeneralUtility::getFileAbsFileName($result))) {
-                    $result = PathUtility::getAbsoluteWebPath(GeneralUtility::getFileAbsFileName($result));
+                } elseif (str_starts_with($result, 'EXT:')) {
+                    $file = strstr($result, '?', true);
+                    if (is_file(GeneralUtility::getFileAbsFileName($file))) {
+                        $result = PathUtility::getAbsoluteWebPath(GeneralUtility::getFileAbsFileName($result));
+                    }
                 }
                 //$result = str_starts_with($result, '/') ? substr($result, 1) : $result;
 
@@ -266,9 +279,7 @@ class Compiler
         $pathInfo = pathinfo($scssFileName);
 
         $hash = hash('sha1', $content);
-        if ($vars !== '') {
-            $hash = hash('sha1', $hash . implode(',', $vars));
-        } // hash variables too
+        $hash = hash('sha1', $hash . implode(',', $vars));
 
         $imports = self::collectImports($content);
         foreach ($imports as $importPath) {

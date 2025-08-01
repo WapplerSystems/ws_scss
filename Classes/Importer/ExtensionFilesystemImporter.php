@@ -10,6 +10,7 @@ use ScssPhp\ScssPhp\Syntax;
 use ScssPhp\ScssPhp\Util\Path;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\PathUtility;
+use WapplerSystems\WsScss\Compiler;
 
 /**
  * An importer that loads files from a load path on the filesystem.
@@ -46,6 +47,7 @@ final class ExtensionFilesystemImporter extends Importer
             is_file($file = pathinfo($full, PATHINFO_DIRNAME) . '/_' . basename($full) . '.scss') ||
             ($hasExtension && is_file($file = $full))
         ) {
+            Compiler::$CURRENT_LOAD_PATH = dirname($file);
             return Uri::new('file://'.$file);
         }
 
