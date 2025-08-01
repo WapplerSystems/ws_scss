@@ -142,10 +142,6 @@ class Compiler
         }
 
         $scssCompiler = new \ScssPhp\ScssPhp\Compiler();
-
-
-
-
         $scssCompiler->addVariables($convertedVariables);
         $scssCompiler->setOutputStyle($outputStyle);
 
