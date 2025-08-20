@@ -4,10 +4,12 @@ namespace WapplerSystems\WsScss\Importer;
 
 use League\Uri\Contracts\UriInterface;
 use League\Uri\Uri;
+use ScssPhp\ScssPhp\Importer\ImportContext;
 use ScssPhp\ScssPhp\Importer\Importer;
 use ScssPhp\ScssPhp\Importer\ImporterResult;
 use ScssPhp\ScssPhp\Syntax;
 use ScssPhp\ScssPhp\Util\Path;
+use TYPO3\CMS\Core\Utility\DebugUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\PathUtility;
 use WapplerSystems\WsScss\Compiler;
@@ -18,11 +20,11 @@ use WapplerSystems\WsScss\Compiler;
 final class ExtensionFilesystemImporter extends Importer
 {
 
-    private string $visualImportPath;
+    private readonly string $loadPath;
 
-    public function __construct(string $visualImportPath)
+    public function __construct(string $loadPath)
     {
-        $this->visualImportPath = $visualImportPath;
+        $this->loadPath = $loadPath !== null ? Path::absolute($loadPath) : null;
     }
 
     public function canonicalize(UriInterface $url): ?UriInterface
@@ -31,23 +33,40 @@ final class ExtensionFilesystemImporter extends Importer
         // Resolve potential back paths manually using PathUtility::getCanonicalPath,
         // but make sure we do not break out of TYPO3 application path using GeneralUtility::getFileAbsFileName
         // Also resolve EXT: paths if given
-        $url = str_replace('ext:', 'EXT:', $url);
+        $url = str_replace('ext:', 'EXT:', $url->toString());
         if (!str_contains($url, 'EXT:')) {
             return null;
         }
+        //DebugUtility::debug($url, 'ExtensionFilesystemImporter canonicalize');
 
         $isTypo3Absolute = (str_starts_with($url, 'EXT:')) || PathUtility::isAbsolutePath($url);
-        $fileName = $isTypo3Absolute ? $url : $this->visualImportPath . '/' . $url;
-        $full = GeneralUtility::getFileAbsFileName(PathUtility::getCanonicalPath($fileName));
+        $fileName = $isTypo3Absolute ? $url : $this->loadPath . '/' . $url;
+        $fullPath = GeneralUtility::getFileAbsFileName(PathUtility::getCanonicalPath($fileName));
         // The API forces us to check the existence of files paths, with or without url.
         // We must only return a string if the file to be imported actually exists.
         $hasExtension = (bool) preg_match('/[.]s?css$/', $url);
         if (
-            is_file($file = pathinfo($full, PATHINFO_DIRNAME) . '/' . basename($full) . '.scss') ||
-            is_file($file = pathinfo($full, PATHINFO_DIRNAME) . '/_' . basename($full) . '.scss') ||
-            ($hasExtension && is_file($file = $full))
+            is_file($file = pathinfo($fullPath, PATHINFO_DIRNAME) . '/' . basename($fullPath) . '.scss') ||
+            is_file($file = pathinfo($fullPath, PATHINFO_DIRNAME) . '/_' . basename($fullPath) . '.scss') ||
+            ($hasExtension && is_file($file = $fullPath))
         ) {
-            Compiler::$CURRENT_LOAD_PATH = dirname($file);
+
+
+            if (ImportContext::isFromImport()) {
+
+                //DebugUtility::debug(ImportContext::getCanonicalizeContext()->getContainingUrl(),' ExtensionFilesystemImporter ContainingUrl');
+
+                $originUrl = ImportContext::getCanonicalizeContext()->getContainingUrl();
+
+                //$originPath = Path::fromUri($originUrl);
+                //$relPath = PathUtility::getRelativePath($originPath, $fullPath);
+                //DebugUtility::debug($relPath);
+
+
+                //return Uri::new('file://'.$relPath);
+            }
+
+
             return Uri::new('file://'.$file);
         }
 
@@ -89,5 +108,10 @@ final class ExtensionFilesystemImporter extends Importer
     public function __toString(): string
     {
         return $this->loadPath ?? '<extension file importer>';
+    }
+
+    public function isNonCanonicalScheme(string $scheme): bool
+    {
+        return ($scheme === 'ext');
     }
 }

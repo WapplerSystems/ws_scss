@@ -12,6 +12,7 @@ use ScssPhp\ScssPhp\Syntax;
 use ScssPhp\ScssPhp\Util\Path;
 use ScssPhp\ScssPhp\Value\SassString;
 use ScssPhp\ScssPhp\Value\Value;
+use TYPO3\CMS\Core\Utility\DebugUtility;
 
 /**
  * An importer that loads files from a load path on the filesystem.
@@ -40,6 +41,7 @@ final class VariableFilesystemImporter extends Importer
         if (!str_contains($urlString, '#{')) {
             return null;
         }
+        //DebugUtility::debug($urlString, 'VariableFilesystemImporter canonicalize');
         $vars = $this->compiler->getVariables();
 
         /**

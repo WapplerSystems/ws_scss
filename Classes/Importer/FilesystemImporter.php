@@ -13,11 +13,13 @@
 namespace WapplerSystems\WsScss\Importer;
 
 use League\Uri\Contracts\UriInterface;
+use ScssPhp\ScssPhp\Importer\ImportContext;
 use ScssPhp\ScssPhp\Importer\Importer;
 use ScssPhp\ScssPhp\Importer\ImporterResult;
 use ScssPhp\ScssPhp\Importer\ImportUtil;
 use ScssPhp\ScssPhp\Syntax;
 use ScssPhp\ScssPhp\Util\Path;
+use TYPO3\CMS\Core\Utility\DebugUtility;
 use WapplerSystems\WsScss\Compiler;
 
 /**
@@ -40,26 +42,40 @@ final class FilesystemImporter extends Importer
 
     public function canonicalize(UriInterface $url): ?UriInterface
     {
-
-        if (Compiler::$CURRENT_LOAD_PATH !== '') {
-            $this->loadPath = Compiler::$CURRENT_LOAD_PATH;
-            Compiler::$CURRENT_LOAD_PATH = '';
-        }
+        //DebugUtility::debug($url, 'FilesystemImporter canonicalize');
 
         if ($url->getScheme() === 'file') {
+
+            //DebugUtility::debug('file scheme', 'FilesystemImporter canonicalize');
+
             $resolved = ImportUtil::resolveImportPath(Path::fromUri($url));
         } elseif ($url->getScheme() !== null) {
             return null;
         } elseif ($this->loadPath !== null) {
             $path = $this->normalizePath(Path::join($this->loadPath, Path::fromUri($url)));
+            //DebugUtility::debug('loadPath: ' . $this->loadPath. ' path: '.$path);
+            if (ImportContext::isFromImport()) {
+
+                //DebugUtility::debug(ImportContext::getCanonicalizeContext()->getContainingUrl(),' ImportContext 2');
+
+                $originUrl = ImportContext::getCanonicalizeContext()->getContainingUrl();
+                //DebugUtility::debug(dirname(Path::fromUri($originUrl)));
+
+                $path = Path::join(dirname(Path::fromUri($originUrl)), $url->getPath());
+                //DebugUtility::debug($path, 'new path');
+
+
+            }
             $resolved = ImportUtil::resolveImportPath($path);
         } else {
             return null;
         }
+        //DebugUtility::debug('cannot resolve', 'FilesystemImporter canonicalize');
 
         if ($resolved === null) {
             return null;
         }
+        //DebugUtility::debug(Path::toUri(Path::canonicalize($resolved))->toString(), 'FilesystemImporter resolved');
 
         return Path::toUri(Path::canonicalize($resolved));
     }
