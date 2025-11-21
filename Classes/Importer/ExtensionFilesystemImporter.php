@@ -31,7 +31,7 @@ final class ExtensionFilesystemImporter extends Importer
         // Resolve potential back paths manually using PathUtility::getCanonicalPath,
         // but make sure we do not break out of TYPO3 application path using GeneralUtility::getFileAbsFileName
         // Also resolve EXT: paths if given
-        $url = str_replace('ext:', 'EXT:', $url);
+        $url = str_replace('ext:', 'EXT:', $url->toString());
         if (!str_contains($url, 'EXT:')) {
             return null;
         }
@@ -47,7 +47,6 @@ final class ExtensionFilesystemImporter extends Importer
             is_file($file = pathinfo($full, PATHINFO_DIRNAME) . '/_' . basename($full) . '.scss') ||
             ($hasExtension && is_file($file = $full))
         ) {
-            Compiler::$CURRENT_LOAD_PATH = dirname($file);
             return Uri::new('file://'.$file);
         }
 
@@ -88,6 +87,6 @@ final class ExtensionFilesystemImporter extends Importer
 
     public function __toString(): string
     {
-        return $this->loadPath ?? '<extension file importer>';
+        return '<extension file importer>';
     }
 }

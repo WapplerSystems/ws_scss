@@ -5,6 +5,8 @@ namespace WapplerSystems\WsScss;
 use League\Uri\Uri;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use ScssPhp\ScssPhp\Exception\SassException;
+use ScssPhp\ScssPhp\Importer\CanonicalizeContext;
+use ScssPhp\ScssPhp\Importer\ImportContext;
 use ScssPhp\ScssPhp\OutputStyle;
 use ScssPhp\ScssPhp\Util\Path;
 use ScssPhp\ScssPhp\Value\SassColor;
@@ -19,7 +21,6 @@ use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\Log\Logger;
 use TYPO3\CMS\Core\Log\LogManager;
 use TYPO3\CMS\Core\Resource\Exception\FileDoesNotExistException;
-use TYPO3\CMS\Core\Utility\DebugUtility;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\PathUtility;
@@ -30,8 +31,6 @@ use WapplerSystems\WsScss\Importer\VariableFilesystemImporter;
 
 class Compiler
 {
-
-    public static string $CURRENT_LOAD_PATH = '';
 
     /**
      * @param $scssContent
@@ -159,10 +158,9 @@ class Compiler
 
         $visualImportPath = dirname($scssFilePath);
 
-        self::$CURRENT_LOAD_PATH = '';
         $importers = [
             new ExtensionFilesystemImporter($visualImportPath),
-            new VariableFilesystemImporter($absoluteFilePath, $scssCompiler),
+            //new VariableFilesystemImporter($absoluteFilePath, $scssCompiler),
             new FilesystemImporter($absoluteFilePath)
         ];
 
@@ -244,7 +242,7 @@ class Compiler
             GeneralUtility::writeFile(GeneralUtility::getFileAbsFileName($cssFilePath), $cssCode);
 
         } catch (\Exception $ex) {
-            DebugUtility::debug($ex->getMessage());
+            debug($ex->getMessage());
 
             /** @var $logger Logger */
             $logger = GeneralUtility::makeInstance(LogManager::class)->getLogger(__CLASS__);
@@ -280,15 +278,14 @@ class Compiler
         $imports = self::collectImports($content);
         foreach ($imports as $importPath) {
 
-            $absoluteImportPath = $importerResolver->resolveImportPath($importPath, $pathInfo['dirname']);
+            $canonicalizeContext = new CanonicalizeContext($scssFileName, true);
+            $absoluteImportPath = ImportContext::withCanonicalizeContext($canonicalizeContext, fn () => $importerResolver->resolveImportPath($importPath, $pathInfo['dirname']));
             if ($absoluteImportPath !== null) {
                 $hashImport = self::calculateContentHash($importerResolver, $absoluteImportPath, $visitedFiles);
                 if ($hashImport !== '') {
                     $hash = hash('sha1', $hash . $hashImport);
                 }
             }
-
-
         }
 
         return $hash;

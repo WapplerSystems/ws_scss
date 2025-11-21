@@ -13,6 +13,7 @@
 namespace WapplerSystems\WsScss\Importer;
 
 use League\Uri\Contracts\UriInterface;
+use ScssPhp\ScssPhp\Importer\ImportContext;
 use ScssPhp\ScssPhp\Importer\Importer;
 use ScssPhp\ScssPhp\Importer\ImporterResult;
 use ScssPhp\ScssPhp\Importer\ImportUtil;
@@ -41,18 +42,22 @@ final class FilesystemImporter extends Importer
     public function canonicalize(UriInterface $url): ?UriInterface
     {
 
-        if (Compiler::$CURRENT_LOAD_PATH !== '') {
-            $this->loadPath = Compiler::$CURRENT_LOAD_PATH;
-            Compiler::$CURRENT_LOAD_PATH = '';
-        }
-
         if ($url->getScheme() === 'file') {
             $resolved = ImportUtil::resolveImportPath(Path::fromUri($url));
+        } else if ($url->getScheme() === null) {
+            // relative ?
+            $context = ImportContext::getCanonicalizeContext();
+            if ($context->getContainingUrl() !== null) {
+                // TODO: find better way
+                $path = $this->normalizePath(Path::join($context->getContainingUrl()->getPath(), './../'.Path::fromUri($url)));
+                $resolved = ImportUtil::resolveImportPath($path);
+            } elseif ($this->loadPath !== null) {
+                $path = $this->normalizePath(Path::join($this->loadPath, Path::fromUri($url)));
+                $resolved = ImportUtil::resolveImportPath($path);
+            }
+
         } elseif ($url->getScheme() !== null) {
             return null;
-        } elseif ($this->loadPath !== null) {
-            $path = $this->normalizePath(Path::join($this->loadPath, Path::fromUri($url)));
-            $resolved = ImportUtil::resolveImportPath($path);
         } else {
             return null;
         }
