@@ -625,7 +625,6 @@ final class Compiler
                 return SassNull::create();
 
             default:
-
                 throw new \UnexpectedValueException(sprintf('"Unsupported type "%s" for the value conversion.', $legacyValue[0]));
         }
     }
