@@ -29,6 +29,7 @@ use TYPO3\CMS\Core\Cache\Exception\NoSuchCacheException;
 use TYPO3\CMS\Core\Http\ApplicationType;
 use TYPO3\CMS\Core\Page\PageRenderer;
 use TYPO3\CMS\Core\Resource\Exception\FileDoesNotExistException;
+use TYPO3\CMS\Core\Resource\ResourceFactory;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\PathUtility;
 use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
@@ -45,12 +46,9 @@ use WapplerSystems\WsScss\Event\AfterVariableDefinitionEvent;
 class RenderPreProcessorHook
 {
 
-    private $variables = [];
+    private array $variables = [];
 
-    /**
-     * @var \TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer
-     */
-    private $contentObjectRenderer;
+    private ContentObjectRenderer $contentObjectRenderer;
 
     /**
      * Main hook function
@@ -95,6 +93,9 @@ class RenderPreProcessorHook
             }
             $this->variables = $parsedTypoScriptVariables;
         }
+
+        /** @var ResourceFactory $resourceFactory */
+        $resourceFactory = GeneralUtility::makeInstance(ResourceFactory::class);
 
         $eventDispatcher = GeneralUtility::makeInstance(EventDispatcherInterface::class);
         $event = $eventDispatcher->dispatch(new AfterVariableDefinitionEvent($this->variables));
@@ -143,7 +144,17 @@ class RenderPreProcessorHook
                 }
             }
 
-            $scssFilePath = GeneralUtility::getFileAbsFileName($conf['file']);
+            if (str_starts_with($conf['file'], 'FAL:')) {
+
+                $fileObject = $resourceFactory->retrieveFileOrFolderObject(substr($conf['file'], 4));
+                if ($fileObject === null) {
+                    continue;
+                }
+                $scssFilePath = $fileObject->getForLocalProcessing(false);
+            } else {
+                $scssFilePath = GeneralUtility::getFileAbsFileName($conf['file']);
+            }
+
             $pathChunks = explode('/', PathUtility::getAbsoluteWebPath($scssFilePath));
             if (self::usesComposerClassLoading()) {
                 $assetPath = implode('/',array_splice($pathChunks,0,3)).'/';

@@ -67,7 +67,7 @@ class Compiler
      * @param array $variables
      * @param string|null $cssFilePath
      * @param bool $useSourceMap
-     * @param string $outputStyle
+     * @param OutputStyle|null $outputStyle
      * @return string the compiled css file as path
      * @throws FileDoesNotExistException
      * @throws NoSuchCacheException
