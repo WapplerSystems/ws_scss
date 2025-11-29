@@ -11,8 +11,8 @@
         "sass"
     ],
     "require": {
-        "typo3/cms-core": "^13",
-        "php": "^8.0 || ^8.1 || ^8.2 || ^8.3",
+        "typo3/cms-core": "^14",
+        "php": "^8.2 || ^8.3 || ^8.4",
         "scssphp/scssphp": "^2.1"
     },
     "replace": {
