@@ -1,6 +1,6 @@
 <?php
 
-$EM_CONF['ws_scss'] = [
+$EM_CONF[$_EXTKEY] = [
     'title' => 'SASS compiler for TYPO3',
     'description' => 'Compiles scss files to CSS files.',
     'category' => 'fe',
@@ -12,8 +12,8 @@ $EM_CONF['ws_scss'] = [
     'author_company' => 'WapplerSystems',
     'constraints' => [
         'depends' => [
-            'php' => '8.2.0-8.4.99',
-            'typo3' => '14.0.0',
+            'php' => '8.2.0-8.5.99',
+            'typo3' => '14.0.0-14.4.99',
         ],
         'conflicts' => [
         ],
