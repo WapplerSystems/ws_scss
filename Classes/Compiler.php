@@ -185,7 +185,7 @@ class Compiler
                 if (is_file(PathUtility::getCanonicalPath($absoluteFilePath . '/' . $result))) {
                     $result = PathUtility::getAbsoluteWebPath(PathUtility::getCanonicalPath($relativeFilePath . '/' . $result));
                 } elseif (str_starts_with($result, 'EXT:')) {
-                    $file = strstr($result, '?', true);
+                    $file = strstr($result, '?', true) ?: $result;
                     if (is_file(GeneralUtility::getFileAbsFileName($file))) {
                         $result = PathUtility::getAbsoluteWebPath(GeneralUtility::getFileAbsFileName($result));
                     }
