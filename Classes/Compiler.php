@@ -152,7 +152,7 @@ class Compiler
         } catch (\Exception $ex) {
             DebugUtility::debug($ex->getMessage());
 
-            /** @var $logger Logger */
+            /** @var Logger $logger */
             $logger = GeneralUtility::makeInstance(LogManager::class)->getLogger(__CLASS__);
             $logger->error($ex->getMessage());
         }
@@ -180,7 +180,7 @@ class Compiler
         $pathInfo = pathinfo($scssFileName);
 
         $hash = hash('sha1', $content);
-        if ($vars !== '') {
+        if ($vars !== []) {
             $hash = hash('sha1', $hash . implode(',', $vars));
         } // hash variables too
 
@@ -189,14 +189,14 @@ class Compiler
             $hashImport = '';
 
             if (file_exists($pathInfo['dirname'] . '/' . $import . '.scss')) {
-                $hashImport = self::calculateContentHash($pathInfo['dirname'] . '/' . $import . '.scss', $visitedFiles);
+                $hashImport = self::calculateContentHash($pathInfo['dirname'] . '/' . $import . '.scss', $vars, $visitedFiles);
             } else {
                 $parts = explode('/', $import);
                 $filename = '_' . array_pop($parts);
                 $parts[] = $filename;
                 if (file_exists($pathInfo['dirname'] . '/' . implode('/', $parts) . '.scss')) {
                     $hashImport = self::calculateContentHash($pathInfo['dirname'] . '/' . implode('/',
-                            $parts) . '.scss', [], $visitedFiles);
+                            $parts) . '.scss', $vars, $visitedFiles);
                 }
             }
             if ($hashImport !== '') {

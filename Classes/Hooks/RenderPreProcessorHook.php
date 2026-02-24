@@ -127,13 +127,13 @@ class RenderPreProcessorHook
                         $subConf = $GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.'] ?? [];
 
                         $outputFilePath = $subConf['outputfile'] ?? null;
-                        $useSourceMap = $this->parseBooleanSetting($subConf['sourceMap'] ?? false, false);
-                        $unlink = $this->parseBooleanSetting($subConf['unlink'] ?? false, false);
+                        $useSourceMap = $this->parseBooleanSetting($subConf['sourceMap'] ?? '', false);
+                        $unlink = $this->parseBooleanSetting($subConf['unlink'] ?? '', false);
                         if (isset($subConf['outputStyle']) && ($subConf['outputStyle'] === 'expanded' || $subConf['outputStyle'] === 'compressed')) {
                             $outputStyle = $subConf['outputStyle'];
                         }
                         $variables = array_filter($subConf['variables.'] ?? []);
-                        $inlineOutput = $this->parseBooleanSetting($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['inlineOutput'] ?? false, false);
+                        $inlineOutput = $this->parseBooleanSetting($GLOBALS['TSFE']->pSetup['includeCSS.'][$key . '.']['inlineOutput'] ?? '', false);
                     }
                 }
             }
@@ -163,6 +163,13 @@ class RenderPreProcessorHook
                 unset($conf['tagAttributes']['sourceMap']);
                 unset($conf['tagAttributes']['variables.']);
                 unset($conf['tagAttributes']['outputfile']);
+                unset($conf['tagAttributes']['outputStyle']);
+                unset($conf['tagAttributes']['unlink']);
+
+                if ($outputFilePath !== null) {
+                    $conf['compress'] = false;
+                    $cssFilePath = '/' . ltrim($cssFilePath, '/');
+                }
 
                 $cssFiles[$cssFilePath] = $conf;
                 $cssFiles[$cssFilePath]['file'] = $cssFilePath;
