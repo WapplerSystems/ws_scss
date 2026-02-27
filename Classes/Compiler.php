@@ -90,7 +90,9 @@ class Compiler
         /** @var FileBackend $cache */
         $cache = GeneralUtility::makeInstance(CacheManager::class)->getCache('ws_scss');
 
-        $cacheKey = hash('sha1', $scssFilePath);
+        // Include cssFilePath in cache key so different outputfile targets
+        // (e.g. theme.css vs themeSkarupke.css) get separate cache entries
+        $cacheKey = hash('sha1', $scssFilePath . '|' . $cssFilePath);
         $calculatedContentHash = self::calculateContentHash($scssFilePath, $variables);
         $calculatedContentHash .= md5($cssFilePath);
         if ($useSourceMap) {
@@ -127,6 +129,12 @@ class Compiler
         $parser->addVariables($variables);
         $parser->setOutputStyle($outputStyle);
 
+        // Add vendor directory as import path so SCSS files can use
+        // @import "vendor-name/package-name/..." without fragile relative paths
+        foreach (self::getAdditionalImportPaths() as $importPath) {
+            $parser->addImportPath($importPath);
+        }
+
         if ($useSourceMap) {
             $parser->setSourceMap(\ScssPhp\ScssPhp\Compiler::SOURCE_MAP_INLINE);
 
@@ -152,7 +160,7 @@ class Compiler
         } catch (\Exception $ex) {
             DebugUtility::debug($ex->getMessage());
 
-            /** @var $logger Logger */
+            /** @var Logger $logger */
             $logger = GeneralUtility::makeInstance(LogManager::class)->getLogger(__CLASS__);
             $logger->error($ex->getMessage());
         }
@@ -180,7 +188,7 @@ class Compiler
         $pathInfo = pathinfo($scssFileName);
 
         $hash = hash('sha1', $content);
-        if ($vars !== '') {
+        if ($vars !== []) {
             $hash = hash('sha1', $hash . implode(',', $vars));
         } // hash variables too
 
@@ -189,22 +197,59 @@ class Compiler
             $hashImport = '';
 
             if (file_exists($pathInfo['dirname'] . '/' . $import . '.scss')) {
-                $hashImport = self::calculateContentHash($pathInfo['dirname'] . '/' . $import . '.scss', $visitedFiles);
+                $hashImport = self::calculateContentHash($pathInfo['dirname'] . '/' . $import . '.scss', $vars, $visitedFiles);
             } else {
                 $parts = explode('/', $import);
                 $filename = '_' . array_pop($parts);
                 $parts[] = $filename;
                 if (file_exists($pathInfo['dirname'] . '/' . implode('/', $parts) . '.scss')) {
                     $hashImport = self::calculateContentHash($pathInfo['dirname'] . '/' . implode('/',
-                            $parts) . '.scss', [], $visitedFiles);
+                            $parts) . '.scss', $vars, $visitedFiles);
                 }
             }
+
+            // Fallback: resolve via additional import paths (e.g. vendor/)
+            if ($hashImport === '') {
+                foreach (self::getAdditionalImportPaths() as $importBasePath) {
+                    if (file_exists($importBasePath . '/' . $import . '.scss')) {
+                        $hashImport = self::calculateContentHash($importBasePath . '/' . $import . '.scss', $vars, $visitedFiles);
+                        break;
+                    }
+                    $parts = explode('/', $import);
+                    $filename = '_' . array_pop($parts);
+                    $parts[] = $filename;
+                    if (file_exists($importBasePath . '/' . implode('/', $parts) . '.scss')) {
+                        $hashImport = self::calculateContentHash($importBasePath . '/' . implode('/', $parts) . '.scss', $vars, $visitedFiles);
+                        break;
+                    }
+                }
+            }
+
             if ($hashImport !== '') {
                 $hash = hash('sha1', $hash . $hashImport);
             }
         }
 
         return $hash;
+    }
+
+
+    /**
+     * Get additional import paths for the SCSS compiler.
+     * Adds the Composer vendor directory so SCSS files can import
+     * packages using vendor-relative paths (e.g. "vendor-name/package-name/...").
+     *
+     * @return array<string>
+     */
+    private static function getAdditionalImportPaths(): array
+    {
+        $paths = [];
+        $vendorPath = Environment::getProjectPath() . '/vendor';
+        if (is_dir($vendorPath)) {
+            $paths[] = $vendorPath;
+        }
+
+        return $paths;
     }
 
 
