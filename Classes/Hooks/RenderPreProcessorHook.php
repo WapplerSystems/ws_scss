@@ -92,6 +92,18 @@ class RenderPreProcessorHook
                     $parsedTypoScriptVariables[$variable] = $key;
                 }
             }
+
+            // Resolve EXT: prefixes in variable values to web-accessible paths
+            // e.g. "EXT:fontawesome/Resources/Public/..." → "/_assets/{hash}/..."
+            foreach ($parsedTypoScriptVariables as $variable => $value) {
+                if (is_string($value) && str_starts_with($value, 'EXT:')) {
+                    $absolutePath = GeneralUtility::getFileAbsFileName($value);
+                    if ($absolutePath !== '' && (file_exists($absolutePath) || is_dir($absolutePath))) {
+                        $parsedTypoScriptVariables[$variable] = PathUtility::getAbsoluteWebPath($absolutePath);
+                    }
+                }
+            }
+
             $this->variables = $parsedTypoScriptVariables;
         }
 
