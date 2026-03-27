@@ -1,21 +1,25 @@
 {
     "name": "wapplersystems/ws-scss",
-    "description": "SASS compiler for TYPO3",
     "type": "typo3-cms-extension",
-    "homepage": "https://wappler.systems",
+    "description": "SASS compiler for TYPO3",
+    "keywords": ["TYPO3", "extension", "scss", "sass"],
+    "homepage": "https://github.com/WapplerSystems/ws_scss",
     "license": "GPL-2.0-or-later",
-    "keywords": [
-        "TYPO3",
-        "extension",
-        "scss",
-        "sass"
+    "authors": [
+        {
+            "name": "Sven Wappler",
+            "email": "typo3@wappler.systems",
+            "role": "Developer"
+        }
     ],
-    "require": {
-        "typo3/cms-core": "^14",
-        "php": "^8.2 || ^8.3 || ^8.4",
-        "scssphp/scssphp": "^2.1"
+    "support": {
+        "source": "https://github.com/WapplerSystems/ws_scss",
+        "issues": "https://github.com/WapplerSystems/ws_scss/issues"
     },
-    "replace": {
+    "require": {
+        "php": "^8.2",
+        "typo3/cms-core": "^14.0",
+        "scssphp/scssphp": "^2.1"
     },
     "autoload": {
         "psr-4": {
@@ -26,12 +30,5 @@
         "typo3/cms": {
             "extension-key": "ws_scss"
         }
-    },
-    "authors": [
-        {
-            "name": "Sven Wappler",
-            "role": "Developer",
-            "homepage": "https://wappler.systems"
-        }
-    ]
+    }
 }
