@@ -125,7 +125,7 @@ class RenderPreProcessorHook
                         continue;
                     }
 
-                    if ($file === $keyValue) {
+                    if ($file === $keyValue || GeneralUtility::getFileAbsFileName($file) === GeneralUtility::getFileAbsFileName($keyValue)) {
                         $subConf = $setup['page.']['includeCSS.'][$key . '.'] ?? [];
 
                         $outputFilePath = $subConf['outputfile'] ?? null;
@@ -165,7 +165,8 @@ class RenderPreProcessorHook
             if ($inlineOutput) {
                 $useSourceMap = false;
             }
-            $cssFilePath = Compiler::compileFile($scssFilePath, array_merge($this->variables, ['extAssetPath' => $assetPath], $variables), $outputFilePath, $useSourceMap, $outputStyle);
+            $mergedVars = array_merge($this->variables, ['extAssetPath' => $assetPath], $variables);
+            $cssFilePath = Compiler::compileFile($scssFilePath, $mergedVars, $outputFilePath, $useSourceMap, $outputStyle);
 
             if ($inlineOutput && file_exists(GeneralUtility::getFileAbsFileName($cssFilePath))) {
                 // TODO: compression
