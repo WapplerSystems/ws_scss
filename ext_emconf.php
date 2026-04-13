@@ -2,7 +2,7 @@
 
 $EM_CONF[$_EXTKEY] = [
     'title' => 'SASS compiler for TYPO3',
-    'description' => 'Compiles scss files to CSS files.',
+    'description' => 'Compiles SCSS to CSS at runtime with caching, TypoScript variables and EXT: import support',
     'category' => 'fe',
     'version' => '14.0.1',
     'state' => 'stable',

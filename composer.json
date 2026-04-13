@@ -1,8 +1,8 @@
 {
     "name": "wapplersystems/ws-scss",
     "type": "typo3-cms-extension",
-    "description": "SASS compiler for TYPO3",
-    "keywords": ["TYPO3", "extension", "scss", "sass"],
+    "description": "Compiles SCSS to CSS at runtime with caching, TypoScript variables and EXT: import support",
+    "keywords": ["TYPO3", "scss", "sass", "css", "compiler", "scssphp"],
     "homepage": "https://github.com/WapplerSystems/ws_scss",
     "license": "GPL-2.0-or-later",
     "authors": [
