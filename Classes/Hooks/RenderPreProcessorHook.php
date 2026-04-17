@@ -48,7 +48,7 @@ class RenderPreProcessorHook
 
     private array $variables = [];
 
-    private ContentObjectRenderer $contentObjectRenderer;
+    private ?ContentObjectRenderer $contentObjectRenderer = null;
 
     /**
      * Main hook function
