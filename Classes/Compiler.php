@@ -126,6 +126,14 @@ class Compiler
                 continue;
             }
 
+            // Skip empty values — would otherwise be injected as empty SCSS
+            // strings and break functions like shade-color() when a site
+            // setting / TypoScript constant is unset. Let the SCSS-level
+            // !default fall back instead.
+            if ($varValue === null || $varValue === '') {
+                continue;
+            }
+
             if (str_ends_with($varValue, 'rem')) {
                 $convertedVariables[$varName] = SassNumber::create((float)$varValue, 'rem');
             } elseif (str_ends_with($varValue, 'px')) {
