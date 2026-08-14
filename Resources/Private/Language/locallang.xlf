@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<xliff version="1.0">
+	<file source-language="en" datatype="plaintext" original="messages" date="2026-08-15T00:00:00Z"
+		  product-name="ws_scss">
+		<header/>
+		<body>
+
+			<trans-unit id="flushCache">
+				<source>Flush SCSS cache</source>
+			</trans-unit>
+			<trans-unit id="flushCache.description">
+				<source>Forces the next request to recompile SCSS via ws_scss. Only needed after a .scss source file changed -- a generic cache flush no longer does this automatically.</source>
+			</trans-unit>
+
+		</body>
+	</file>
+</xliff>

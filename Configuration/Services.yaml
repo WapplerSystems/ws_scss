@@ -6,3 +6,9 @@ services:
 
   WapplerSystems\WsScss\:
     resource: '../Classes/*'
+
+  WapplerSystems\WsScss\Command\FlushCacheCommand:
+    tags:
+      - name: 'console.command'
+        command: 'wsscss:flush'
+        description: 'Flush the ws_scss compiled-SCSS content-hash cache (not covered by a generic cache:flush, see NonFlushableFileBackend).'
