@@ -1,0 +1,3 @@
+
+# cat=Caching; type=boolean; label=Trust cache without revalidation: When enabled (default), an existing 'ws_scss' cache entry is trusted without re-validating the .scss source -- skips the whole @import-tree content-hash walk entirely on a hit. Requires an explicit flush (CLI "wsscss:flush", a composer deploy hook, or the Backend's "Flush SCSS cache" clear-cache action) after every real .scss change, in every environment -- otherwise the previously compiled CSS keeps being served without warning. Disable to restore the old always-revalidate-by-content-hash behaviour.
+trustCacheWithoutRevalidation = 1

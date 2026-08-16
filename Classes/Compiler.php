@@ -17,6 +17,7 @@ use ScssPhp\ScssPhp\ValueConverter;
 use TYPO3\CMS\Core\Cache\Backend\FileBackend;
 use TYPO3\CMS\Core\Cache\CacheManager;
 use TYPO3\CMS\Core\Cache\Exception\NoSuchCacheException;
+use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\Log\Logger;
 use TYPO3\CMS\Core\Log\LogManager;
@@ -106,16 +107,50 @@ class Compiler
             $cssFilePath = $outputDir . $filename . ($variablesHash ? '_' . $variablesHash : '') . '.css';
         }
 
+        /** @var FileBackend $cache */
+        $cache = GeneralUtility::makeInstance(CacheManager::class)->getCache('ws_scss');
 
+        // The cache key must fold in every parameter that can make two calls
+        // for the SAME $scssFilePath produce different output (cssFilePath,
+        // sourceMap, outputStyle, variables) -- previously only $scssFilePath
+        // was part of the key while these were only mixed into the compared
+        // VALUE below, so two callers compiling the same file with e.g.
+        // different sourceMap settings (a `[{$liveMode}]`-style TypoScript
+        // condition) shared one cache slot and thrashed each other.
+        $cacheKey = hash('sha1', $scssFilePath . '|' . $cssFilePath . '|' . ($useSourceMap ? '1' : '0') . '|' . $outputStyle->value . '|' . implode(',', $variables));
 
-        // Sass compiler cache
-        $cacheDir = $sitePath . 'typo3temp/assets/scss/cache/';
-        if (!is_dir($cacheDir)) {
-            GeneralUtility::mkdir_deep($cacheDir);
+        // See trustCacheWithoutRevalidation() docblock: when true (the
+        // default), a cache hit is trusted unconditionally -- no scssphp
+        // Compiler/importers get built, no file is read, no hash gets
+        // recomputed. This removes the per-request cost of
+        // calculateContentHash() (a full @import-tree walk: file_get_contents
+        // + sha1 per file, plus filesystem stat probing per @import via the
+        // importer chain) that previously ran on EVERY call, hit or miss.
+        $trust = self::trustCacheWithoutRevalidation();
+        if ($trust && $cache->has($cacheKey)) {
+            return $cssFilePath;
         }
-        if (!is_writable($cacheDir)) {
-            // TODO: Error message
-            return '';
+
+        $absoluteFilePath = dirname($scssFilePath);
+        $relativeFilePath = PathUtility::getAbsoluteWebPath($absoluteFilePath);
+        $visualImportPath = dirname($scssFilePath);
+
+        // Only the importer chain is needed for calculateContentHash() below
+        // (in non-trust mode) -- the full scssphp Compiler object is built
+        // further down, only once we know a real (re)compile is happening.
+        $importers = [
+            new ExtensionFilesystemImporter($visualImportPath),
+            //new VariableFilesystemImporter($absoluteFilePath, $scssCompiler),
+            new FilesystemImporter($absoluteFilePath)
+        ];
+        $importResolver = new ImportResolver($importers);
+
+        $calculatedContentHash = null;
+        if (!$trust) {
+            $calculatedContentHash = self::calculateContentHash($importResolver, Uri::new($scssFilePath), $variables);
+            if ($cache->has($cacheKey) && $cache->get($cacheKey) === $calculatedContentHash) {
+                return $cssFilePath;
+            }
         }
 
         $convertedVariables = [];
@@ -161,21 +196,9 @@ class Compiler
             ]);
         }
 
-        $absoluteFilePath = dirname($scssFilePath);
-        $relativeFilePath = PathUtility::getAbsoluteWebPath($absoluteFilePath);
-
-        $visualImportPath = dirname($scssFilePath);
-
-        $importers = [
-            new ExtensionFilesystemImporter($visualImportPath),
-            //new VariableFilesystemImporter($absoluteFilePath, $scssCompiler),
-            new FilesystemImporter($absoluteFilePath)
-        ];
-
         foreach ($importers as $importer) {
             $scssCompiler->addImporter($importer);
         }
-
 
         $scssCompiler->registerFunction(
             'url',
@@ -205,32 +228,7 @@ class Compiler
             [0 => 'string']
         );
 
-        $importResolver = new ImportResolver($importers);
-
-        /** @var FileBackend $cache */
-        $cache = GeneralUtility::makeInstance(CacheManager::class)->getCache('ws_scss');
-
-        $scssFilePathUri = Uri::new($scssFilePath);
-
-        $cacheKey = hash('sha1', $scssFilePath);
-        $calculatedContentHash = self::calculateContentHash($importResolver, $scssFilePathUri, $variables);
-        $calculatedContentHash .= md5($cssFilePath);
-        if ($useSourceMap) {
-            $calculatedContentHash .= 'sm';
-        }
-
-        $calculatedContentHash .= $outputStyle->value;
-
-        if ($cache->has($cacheKey)) {
-            $contentHashCache = $cache->get($cacheKey);
-            if ($contentHashCache === $calculatedContentHash) {
-                return $cssFilePath;
-            }
-        }
-
-
         try {
-
 
             $scssSource = GeneralUtility::getUrl($scssFilePath);
             if ($scssSource === false) {
@@ -245,7 +243,11 @@ class Compiler
             );
             $cssCode = $event->getCssCode();
 
-            $cache->set($cacheKey, $calculatedContentHash, ['scss'], 0);
+            // In trust mode the value is never read back for comparison (see
+            // the early-return above) -- a short, human-readable marker is
+            // enough, and lets anyone inspecting the cache on disk tell a
+            // trust-mode entry apart from a real content hash.
+            $cache->set($cacheKey, $trust ? ('trusted:' . date('c')) : $calculatedContentHash, ['scss'], 0);
             GeneralUtility::mkdir_deep(dirname(GeneralUtility::getFileAbsFileName($cssFilePath)));
             GeneralUtility::writeFile(GeneralUtility::getFileAbsFileName($cssFilePath), $cssCode);
 
@@ -258,6 +260,41 @@ class Compiler
         }
 
         return $cssFilePath;
+    }
+
+    /**
+     * Whether an existing 'ws_scss' cache entry is trusted without
+     * re-validating the .scss source (skips calculateContentHash() and the
+     * whole scssphp Compiler/importer setup on a cache hit).
+     *
+     * Defaults to true: NonFlushableFileBackend (see ext_localconf.php)
+     * already keeps this cache out of reach of a generic cache:flush, and
+     * the wsscss:flush CLI command / Backend "Flush SCSS cache" clear-cache
+     * action provide the deliberate invalidation path -- once that pipeline
+     * exists, re-hashing the whole @import tree on every single request just
+     * to confirm "yes, still unchanged" is redundant work.
+     *
+     * Trade-off: with this enabled, editing a .scss source (including a
+     * transitively @import-ed partial, or -- for ws-components -- a
+     * component .scss file that isn't the top-level synthesized bundle
+     * string) no longer self-heals on the next request. An explicit
+     * `wsscss:flush` (CLI, a composer post-autoload-dump/post-update-cmd
+     * hook, or the Backend button) is required after every real .scss
+     * change, in every environment (this is NOT gated by Production vs.
+     * Development context) -- otherwise the previously compiled CSS keeps
+     * being served indefinitely, without error or warning.
+     *
+     * Toggle in the Backend under Admin Tools > Settings > Extension
+     * Configuration > ws_scss (see ext_conf_template.txt), or per-project via
+     * config/system/settings.php:
+     *   $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['ws_scss']['trustCacheWithoutRevalidation'] = '0';
+     * to restore the always-revalidate-by-content-hash behaviour (safe, but
+     * pays the full @import-tree walk cost on every call, hit or miss).
+     */
+    private static function trustCacheWithoutRevalidation(): bool
+    {
+        return (bool)GeneralUtility::makeInstance(ExtensionConfiguration::class)
+            ->get('ws_scss', 'trustCacheWithoutRevalidation');
     }
 
 

@@ -214,22 +214,47 @@ final class PostProcessCss
 
 ## Caching
 
-Compiled CSS is cached in `typo3temp/assets/css/`. The cache is automatically invalidated when:
+Compiled CSS is cached in `typo3temp/assets/css/`. Bookkeeping for that cache lives in a separate
+TYPO3 cache identifier, `ws_scss`, registered with `NonFlushableFileBackend` -- a generic
+`cache:flush` (CLI, deploy hook, Backend "Clear all caches") deliberately does **not** clear it, in
+any environment. This is intentional: it used to get wiped by every unrelated flush, which forced a
+full recompile of every configured SCSS entry on the very next request -- for every visitor hitting
+the site concurrently right after a deploy/flush, since nothing about the .scss sources had actually
+changed.
 
-- SCSS source files change
-- Imported files change
-- Variables change
-- Output style or source map settings change
-
-To force recompilation, flush caches via backend or CLI:
+To invalidate it on purpose (i.e. after an actual `.scss` source change), use one of:
 
 ```bash
-vendor/bin/typo3 cache:flush --group=system
+vendor/bin/typo3 wsscss:flush
 ```
 
-### Development tip
+- the Backend's "Flush SCSS cache" entry in the "Clear cache" toolbar menu, or
+- wire the CLI command into your deploy pipeline, e.g. a composer `post-autoload-dump`/`post-update-cmd`
+  script, so it runs automatically on every `composer install`/`update`.
 
-Disable the TypoScript template cache in your backend user settings to trigger SCSS recompilation on every page load during development.
+### `trustCacheWithoutRevalidation`
+
+By default (`true`), a cache hit is trusted **without** re-validating the `.scss` source -- no
+`file_get_contents()`/`sha1()` walk of the whole `@import` tree, no scssphp `Compiler`/importer setup,
+just a cache-existence check. This is what removes the per-request revalidation cost entirely (not
+just the recompile-after-flush cost above).
+
+**Trade-off:** with this on, editing a `.scss` source -- including a transitively `@import`-ed
+partial, or (for `wapplersystems/ws-components`) a component `.scss` file that isn't the top-level
+synthesized bundle string -- no longer self-heals on the next request. An explicit `wsscss:flush`
+is required after **every** real `.scss` change, in every environment (this is **not** gated by
+Production vs. Development context) -- otherwise the previously compiled CSS keeps being served
+indefinitely, silently, without error or warning.
+
+To restore the old always-revalidate-by-content-hash behaviour (safe for local development without
+remembering to flush, at the cost of the full `@import`-tree walk on every call, hit or miss), disable
+it per project -- either in the Backend under **Admin Tools > Settings > Extension Configuration >
+ws_scss**, or via config file:
+
+```php
+// config/system/settings.php
+$GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['ws_scss']['trustCacheWithoutRevalidation'] = '0';
+```
 
 ## Complete example
 
