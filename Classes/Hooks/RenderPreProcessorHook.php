@@ -23,6 +23,7 @@ namespace WapplerSystems\WsScss\Hooks;
  ***************************************************************/
 
 use Psr\EventDispatcher\EventDispatcherInterface;
+use Psr\Http\Message\ServerRequestInterface;
 use ScssPhp\ScssPhp\Exception\SassException;
 use ScssPhp\ScssPhp\OutputStyle;
 use TYPO3\CMS\Core\Cache\Exception\NoSuchCacheException;
@@ -74,24 +75,7 @@ class RenderPreProcessorHook
 
         $setup = $GLOBALS['TYPO3_REQUEST']->getAttribute('frontend.typoscript')->getSetupArray();
         if (\is_array($setup['plugin.']['tx_wsscss.']['variables.'] ?? null)) {
-
-            $variables = $setup['plugin.']['tx_wsscss.']['variables.'];
-
-            $parsedTypoScriptVariables = [];
-
-            if ($this->contentObjectRenderer === null) {
-                $this->contentObjectRenderer = GeneralUtility::makeInstance(ContentObjectRenderer::class);
-            }
-
-            foreach ($variables as $variable => $variableValue) {
-                if (array_key_exists($variable . '.', $variables)) {
-                    $content = $this->contentObjectRenderer->cObjGetSingle($variables[$variable], $variables[$variable . '.']);
-                    $parsedTypoScriptVariables[$variable] = $content;
-                } elseif (!str_ends_with($variable, '.')) {
-                    $parsedTypoScriptVariables[$variable] = $variableValue;
-                }
-            }
-            $this->variables = $parsedTypoScriptVariables;
+            $this->variables = $this->parseTypoScriptVariables($setup['plugin.']['tx_wsscss.']['variables.']);
         }
 
         /** @var ResourceFactory $resourceFactory */
@@ -138,7 +122,7 @@ class RenderPreProcessorHook
                                 $outputStyle = OutputStyle::COMPRESSED;
                             }
                         }
-                        $variables = array_filter($subConf['variables.'] ?? []);
+                        $variables = array_filter($this->parseTypoScriptVariables($subConf['variables.'] ?? []));
                         $inlineOutput = $this->parseBooleanSetting($setup['page.']['includeCSS.'][$key . '.']['inlineOutput'] ?? false, false);
                     }
                 }
@@ -186,6 +170,49 @@ class RenderPreProcessorHook
             }
         }
         $params['cssFiles'] = $cssFiles;
+    }
+
+    /**
+     * Flattens a TypoScript variables array into plain SCSS variable values.
+     *
+     * A variable may either be a plain value (`myVar = 20px`) or a content
+     * object (`myVar = TEXT` + `myVar.value = 20px`). The latter arrives as two
+     * keys -- the object name and a `myVar.` sub-array -- and has to be rendered
+     * before it can be handed to the compiler. Sub-arrays that are left over
+     * are dropped: they would end up in Compiler::compileFile(), where
+     * implode() on the variables array triggers an "Array to string conversion"
+     * warning and, with TYPO3's error handler, a 500 in the frontend.
+     */
+    private function parseTypoScriptVariables(array $variables): array
+    {
+        $parsedVariables = [];
+
+        foreach ($variables as $variable => $variableValue) {
+            if (array_key_exists($variable . '.', $variables)) {
+                $parsedVariables[$variable] = $this->getContentObjectRenderer()
+                    ->cObjGetSingle($variables[$variable], $variables[$variable . '.']);
+            } elseif (!str_ends_with($variable, '.')) {
+                $parsedVariables[$variable] = $variableValue;
+            }
+        }
+
+        return $parsedVariables;
+    }
+
+    private function getContentObjectRenderer(): ContentObjectRenderer
+    {
+        if ($this->contentObjectRenderer === null) {
+            $this->contentObjectRenderer = GeneralUtility::makeInstance(ContentObjectRenderer::class);
+        }
+
+        // cObjGetSingle() ends up in ContentObjectRenderer::getRequest(), which falls back to
+        // $GLOBALS['TYPO3_REQUEST'] with a deprecation notice in v14 and loses that fallback in
+        // v15. Assign on every access -- the hook instance can outlive a single request.
+        if (($GLOBALS['TYPO3_REQUEST'] ?? null) instanceof ServerRequestInterface) {
+            $this->contentObjectRenderer->setRequest($GLOBALS['TYPO3_REQUEST']);
+        }
+
+        return $this->contentObjectRenderer;
     }
 
     private function parseBooleanSetting(string $value, bool $defaultValue): bool
