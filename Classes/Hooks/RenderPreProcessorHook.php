@@ -46,6 +46,19 @@ use WapplerSystems\WsScss\Event\AfterVariableDefinitionEvent;
 class RenderPreProcessorHook
 {
 
+    /**
+     * TypoScript keys below page.includeCSS.<key> that configure this extension.
+     * They are not HTML attributes and must not end up on the rendered <link> tag.
+     */
+    private const OWN_TYPOSCRIPT_KEYS = [
+        'inlineOutput',
+        'outputfile',
+        'outputStyle',
+        'sourceMap',
+        'unlink',
+        'variables.',
+    ];
+
     private array $variables = [];
 
     private ?ContentObjectRenderer $contentObjectRenderer = null;
@@ -176,10 +189,9 @@ class RenderPreProcessorHook
                 ];
             } else if (!$unlink) {
 
-                unset($conf['tagAttributes']['inlineOutput']);
-                unset($conf['tagAttributes']['sourceMap']);
-                unset($conf['tagAttributes']['variables.']);
-                unset($conf['tagAttributes']['outputfile']);
+                foreach (self::OWN_TYPOSCRIPT_KEYS as $ownKey) {
+                    unset($conf['tagAttributes'][$ownKey]);
+                }
 
                 $cssFiles[$cssFilePath] = $conf;
                 $cssFiles[$cssFilePath]['file'] = $cssFilePath;
