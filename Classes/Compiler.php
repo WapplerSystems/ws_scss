@@ -127,7 +127,17 @@ class Compiler
         // + sha1 per file, plus filesystem stat probing per @import via the
         // importer chain) that previously ran on EVERY call, hit or miss.
         $trust = self::trustCacheWithoutRevalidation();
-        if ($trust && $cache->has($cacheKey)) {
+
+        // A cache entry only says "this output is up to date", not that it is
+        // still on disk. typo3temp/ gets wiped by deployments, core updates and
+        // the Install Tool's "Remove Temporary Assets", while this cache
+        // survives a cache:flush (NonFlushableFileBackend) -- without this
+        // check the stale entry kept returning a path to a missing file, and
+        // TYPO3 v14 answered every page with CanNotResolveSystemResourceException.
+        $absoluteCssFilePath = GeneralUtility::getFileAbsFileName($cssFilePath);
+        $outputExists = $absoluteCssFilePath !== '' && is_file($absoluteCssFilePath);
+
+        if ($trust && $outputExists && $cache->has($cacheKey)) {
             return $cssFilePath;
         }
 
@@ -148,7 +158,7 @@ class Compiler
         $calculatedContentHash = null;
         if (!$trust) {
             $calculatedContentHash = self::calculateContentHash($importResolver, Uri::new($scssFilePath), $variables);
-            if ($cache->has($cacheKey) && $cache->get($cacheKey) === $calculatedContentHash) {
+            if ($outputExists && $cache->has($cacheKey) && $cache->get($cacheKey) === $calculatedContentHash) {
                 return $cssFilePath;
             }
         }
@@ -243,13 +253,20 @@ class Compiler
             );
             $cssCode = $event->getCssCode();
 
+            GeneralUtility::mkdir_deep(dirname($absoluteCssFilePath));
+            // writeFile() returns false instead of warning since TYPO3 14.3.8,
+            // so a failed write has to be checked here -- and the cache entry
+            // is only written afterwards, otherwise it would mark a file as
+            // compiled that never reached the disk.
+            if (!GeneralUtility::writeFile($absoluteCssFilePath, $cssCode)) {
+                throw new \RuntimeException('Could not write compiled CSS to ' . $absoluteCssFilePath, 1791679076);
+            }
+
             // In trust mode the value is never read back for comparison (see
             // the early-return above) -- a short, human-readable marker is
             // enough, and lets anyone inspecting the cache on disk tell a
             // trust-mode entry apart from a real content hash.
             $cache->set($cacheKey, $trust ? ('trusted:' . date('c')) : $calculatedContentHash, ['scss'], 0);
-            GeneralUtility::mkdir_deep(dirname(GeneralUtility::getFileAbsFileName($cssFilePath)));
-            GeneralUtility::writeFile(GeneralUtility::getFileAbsFileName($cssFilePath), $cssCode);
 
         } catch (\Exception $ex) {
             debug($ex->getMessage());
