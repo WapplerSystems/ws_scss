@@ -49,10 +49,13 @@ final class FilesystemImporter extends Importer
             $context = ImportContext::getCanonicalizeContext();
             if ($context->getContainingUrl() !== null) {
                 // TODO: find better way
-                $path = $this->normalizePath(Path::join($context->getContainingUrl()->getPath(), './../'.Path::fromUri($url)));
+                $containingUrl = $context->getContainingUrl();
+                // Path::fromUri() turns file:///C:/x into C:\x; the raw URL path would be /C:/x on Windows
+                $containingPath = $containingUrl->getScheme() === 'file' ? Path::fromUri($containingUrl) : $containingUrl->getPath();
+                $path = Path::normalize(Path::join($containingPath, './../'.Path::fromUri($url)));
                 $resolved = ImportUtil::resolveImportPath($path);
             } elseif ($this->loadPath !== null) {
-                $path = $this->normalizePath(Path::join($this->loadPath, Path::fromUri($url)));
+                $path = Path::normalize(Path::join($this->loadPath, Path::fromUri($url)));
                 $resolved = ImportUtil::resolveImportPath($path);
             }
 
@@ -104,24 +107,6 @@ final class FilesystemImporter extends Importer
     public function __toString(): string
     {
         return $this->loadPath ?? '<absolute file importer>';
-    }
-
-    private function normalizePath(string $path): string {
-        $parts = explode('/', $path);
-        $absolutes = [];
-
-        foreach ($parts as $part) {
-            if ($part === '' || $part === '.') {
-                continue;
-            }
-            if ($part === '..') {
-                array_pop($absolutes);
-            } else {
-                $absolutes[] = $part;
-            }
-        }
-
-        return '/' . implode('/', $absolutes);
     }
 
 }

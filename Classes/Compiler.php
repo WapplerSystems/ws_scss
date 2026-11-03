@@ -244,7 +244,8 @@ class Compiler
             if ($scssSource === false) {
                 throw new FileDoesNotExistException('SCSS file not found: ' . $scssFilePath, 1633031234);
             }
-            $result = $scssCompiler->compileString($scssSource);
+            // The URL lets scssphp resolve relative imports against the entry file
+            $result = $scssCompiler->compileString($scssSource, Path::toUri($scssFilePath));
             $cssCode = $result->getCss();
 
             $eventDispatcher = GeneralUtility::makeInstance(EventDispatcherInterface::class);
