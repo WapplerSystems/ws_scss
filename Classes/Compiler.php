@@ -157,7 +157,8 @@ class Compiler
 
         $calculatedContentHash = null;
         if (!$trust) {
-            $calculatedContentHash = self::calculateContentHash($importResolver, Uri::new($scssFilePath), $variables);
+            // Path::toUri() creates a file: URI; Uri::new() would take the drive letter of a Windows path as scheme
+            $calculatedContentHash = self::calculateContentHash($importResolver, Path::toUri($scssFilePath), $variables);
             if ($outputExists && $cache->has($cacheKey) && $cache->get($cacheKey) === $calculatedContentHash) {
                 return $cssFilePath;
             }
