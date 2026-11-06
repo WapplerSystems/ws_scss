@@ -157,7 +157,8 @@ class Compiler
 
         $calculatedContentHash = null;
         if (!$trust) {
-            $calculatedContentHash = self::calculateContentHash($importResolver, Uri::new($scssFilePath), $variables);
+            // Path::toUri() creates a file: URI; Uri::new() would take the drive letter of a Windows path as scheme
+            $calculatedContentHash = self::calculateContentHash($importResolver, Path::toUri($scssFilePath), $variables);
             if ($outputExists && $cache->has($cacheKey) && $cache->get($cacheKey) === $calculatedContentHash) {
                 return $cssFilePath;
             }
@@ -244,7 +245,8 @@ class Compiler
             if ($scssSource === false) {
                 throw new FileDoesNotExistException('SCSS file not found: ' . $scssFilePath, 1633031234);
             }
-            $result = $scssCompiler->compileString($scssSource);
+            // The URL lets scssphp resolve relative imports against the entry file
+            $result = $scssCompiler->compileString($scssSource, Path::toUri($scssFilePath));
             $cssCode = $result->getCss();
 
             $eventDispatcher = GeneralUtility::makeInstance(EventDispatcherInterface::class);
