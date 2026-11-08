@@ -3,7 +3,6 @@
 namespace WapplerSystems\WsScss\Importer;
 
 use League\Uri\Contracts\UriInterface;
-use League\Uri\Uri;
 use ScssPhp\ScssPhp\Importer\Importer;
 use ScssPhp\ScssPhp\Importer\ImporterResult;
 use ScssPhp\ScssPhp\Syntax;
@@ -47,7 +46,8 @@ final class ExtensionFilesystemImporter extends Importer
             is_file($file = pathinfo($full, PATHINFO_DIRNAME) . '/_' . basename($full) . '.scss') ||
             ($hasExtension && is_file($file = $full))
         ) {
-            return Uri::new('file://'.$file);
+            // 'file://'.$file would turn E:/x into host "E" and Path::fromUri() into the UNC path \\e\x on Windows
+            return Path::toUri($file);
         }
 
         return null;
