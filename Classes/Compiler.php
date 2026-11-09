@@ -367,6 +367,10 @@ class Compiler
         $matches = [];
         $imports = [];
 
+        // Skip comments, an "@import" mentioned in a comment is no import (and its text no valid URI); "//" after
+        // ":", quotes or "(" is part of a URL like "http://" or "url(//...)", not a comment
+        $content = preg_replace(['#/\*.*?\*/#s', '#(?<![:\'"(\w])//[^\n]*#'], '', $content) ?? $content;
+
         preg_match_all('/@import([^;]*);/', $content, $matches);
 
         foreach ($matches[1] as $importString) {
