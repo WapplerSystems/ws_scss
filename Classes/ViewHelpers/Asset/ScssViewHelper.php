@@ -94,7 +94,10 @@ final class ScssViewHelper extends AbstractTagBasedViewHelper
             }
             $pathChunks = explode('/', PathUtility::getAbsoluteWebPath($scssFilePath));
             if (self::usesComposerClassLoading()) {
-                $assetPath = implode('/', array_splice($pathChunks, 0, 3)) . '/';
+                // Cut after '_assets/<hash>' instead of a fixed segment count, so an installation
+                // served from a subdirectory (e.g. /mpi/_assets/<hash>/) keeps the hash.
+                $assetsIndex = array_search('_assets', $pathChunks, true);
+                $assetPath = implode('/', array_splice($pathChunks, 0, $assetsIndex !== false ? $assetsIndex + 2 : 3)) . '/';
             } else {
                 $assetPath = implode('/', array_splice($pathChunks, 0, 6)) . '/';
             }
