@@ -27,6 +27,7 @@ use ScssPhp\ScssPhp\Exception\SassException;
 use ScssPhp\ScssPhp\OutputStyle;
 use TYPO3\CMS\Core\Cache\Exception\NoSuchCacheException;
 use TYPO3\CMS\Core\Http\ApplicationType;
+use TYPO3\CMS\Core\Log\LogManager;
 use TYPO3\CMS\Core\Page\PageRenderer;
 use TYPO3\CMS\Core\Resource\Exception\FileDoesNotExistException;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
@@ -74,7 +75,32 @@ class RenderPreProcessorHook
             return;
         }
 
-        $setup = $GLOBALS['TYPO3_REQUEST']->getAttribute('frontend.typoscript')->getSetupArray();
+        $hasScssFiles = false;
+        foreach ($params['cssFiles'] as $conf) {
+            if (pathinfo($conf['file'] ?? '', PATHINFO_EXTENSION) === 'scss') {
+                $hasScssFiles = true;
+                break;
+            }
+        }
+        if (!$hasScssFiles) {
+            return;
+        }
+
+        // The full TypoScript setup is not available in cached frontend scope, e.g. when an error page
+        // loaded from the page cache was rendered as sub-request and replaced $GLOBALS['TYPO3_REQUEST'].
+        // hasSetup() only reports the setup tree, so ask for the array itself.
+        try {
+            $setup = $GLOBALS['TYPO3_REQUEST']->getAttribute('frontend.typoscript')?->getSetupArray();
+        } catch (\RuntimeException) {
+            $setup = null;
+        }
+        if ($setup === null) {
+            $setup = [];
+            GeneralUtility::makeInstance(LogManager::class)->getLogger(__CLASS__)->warning(
+                'TypoScript setup is not available, SCSS files are compiled without TypoScript variables and settings.',
+                ['url' => (string)$GLOBALS['TYPO3_REQUEST']->getUri()]
+            );
+        }
         if (\is_array($setup['plugin.']['tx_wsscss.']['variables.'] ?? null)) {
 
             $variables = $setup['plugin.']['tx_wsscss.']['variables.'];
@@ -118,7 +144,7 @@ class RenderPreProcessorHook
             $unlink = false;
 
             // search settings for scss file
-            if (is_array($setup['page.']['includeCSS.'] ?? [])) {
+            if (is_array($setup['page.']['includeCSS.'] ?? null)) {
                 foreach ($setup['page.']['includeCSS.'] as $key => $keyValue) {
                     if (str_ends_with($key, '.')) {
                         continue;
