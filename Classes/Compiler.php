@@ -249,6 +249,19 @@ class Compiler
             $result = $scssCompiler->compileString($scssSource, Path::toUri($scssFilePath));
             $cssCode = $result->getCss();
 
+            // scssphp marks non-ASCII output in COMPRESSED style with a
+            // leading byte order mark instead of @charset. That is fine for a
+            // standalone file, but TYPO3 inlines CSS files (`inline = 1`,
+            // liveMode) behind a `/*name*/` comment -- there the BOM is no
+            // longer at the start of the stylesheet, becomes part of the first
+            // selector (`\u{FEFF}:root`) and silently drops that whole rule
+            // (e.g. every --bs-* variable, so the body font fell back to the
+            // browser default). @charset carries the same information and is
+            // simply ignored when it does not come first.
+            if (str_starts_with($cssCode, "\u{FEFF}")) {
+                $cssCode = '@charset "UTF-8";' . substr($cssCode, 3);
+            }
+
             $eventDispatcher = GeneralUtility::makeInstance(EventDispatcherInterface::class);
             $event = $eventDispatcher->dispatch(
                 new AfterScssCompilationEvent($cssCode)
