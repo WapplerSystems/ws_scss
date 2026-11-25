@@ -1,19 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace WapplerSystems\WsScss;
 
-use League\Uri\Uri;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use ScssPhp\ScssPhp\Exception\SassException;
-use ScssPhp\ScssPhp\Importer\CanonicalizeContext;
-use ScssPhp\ScssPhp\Importer\ImportContext;
 use ScssPhp\ScssPhp\OutputStyle;
-use ScssPhp\ScssPhp\Util\Path;
-use ScssPhp\ScssPhp\Value\SassColor;
-use ScssPhp\ScssPhp\Value\SassNumber;
-use ScssPhp\ScssPhp\Value\SassString;
-use ScssPhp\ScssPhp\Value\Value;
-use ScssPhp\ScssPhp\ValueConverter;
 use TYPO3\CMS\Core\Cache\Backend\FileBackend;
 use TYPO3\CMS\Core\Cache\CacheManager;
 use TYPO3\CMS\Core\Cache\Exception\NoSuchCacheException;
@@ -21,34 +14,29 @@ use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\Log\Logger;
 use TYPO3\CMS\Core\Log\LogManager;
 use TYPO3\CMS\Core\Resource\Exception\FileDoesNotExistException;
+use TYPO3\CMS\Core\Utility\DebugUtility;
 use TYPO3\CMS\Core\Utility\ExtensionManagementUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Core\Utility\PathUtility;
 use WapplerSystems\WsScss\Event\AfterScssCompilationEvent;
-use WapplerSystems\WsScss\Importer\ExtensionFilesystemImporter;
-use WapplerSystems\WsScss\Importer\FilesystemImporter;
-use WapplerSystems\WsScss\Importer\VariableFilesystemImporter;
 
 class Compiler
 {
 
     /**
-     * @param $scssContent
-     * @param $variables
-     * @param null $cssFilename
-     * @param bool $useSourceMap
-     * @param string $outputStyle
-     * @return string
+     * Compile a SASS string by writing it to a temp file and delegating to compileFile().
+     *
+     * @param string $scssContent Raw SCSS source
+     * @param array $variables SCSS variables
+     * @param string|null $cssFilename Target CSS file name (auto-generated if null)
+     * @param bool $useSourceMap Enable inline source maps
+     * @param OutputStyle $outputStyle CSS output style
+     * @return string Path to compiled CSS file
      * @throws FileDoesNotExistException
      * @throws NoSuchCacheException
      * @throws SassException
      */
-    public static function compileSassString($scssContent, $variables, $cssFilename = null, bool $useSourceMap = false, ?OutputStyle $outputStyle = null): string
+    public static function compileSassString(string $scssContent, array $variables, ?string $cssFilename = null, bool $useSourceMap = false, OutputStyle $outputStyle = OutputStyle::COMPRESSED): string
     {
-        if ($outputStyle === null) {
-            $outputStyle = OutputStyle::COMPRESSED;
-        }
-
         $hash = sha1($scssContent);
         $tempScssFilePath = 'typo3temp/assets/scss/' . $hash . '.scss';
         $absoluteTempScssFilePath = GeneralUtility::getFileAbsFileName($tempScssFilePath);
@@ -61,23 +49,21 @@ class Compiler
         return self::compileFile($tempScssFilePath, $variables, $cssFilename, $useSourceMap, $outputStyle);
     }
 
-
     /**
-     * @param string $scssFilePath
-     * @param array $variables
-     * @param string|null $cssFilePath
-     * @param bool $useSourceMap
-     * @param string $outputStyle
-     * @return string the compiled css file as path
+     * Compile a SCSS file to CSS with caching, variable injection and vendor import support.
+     *
+     * @param string $scssFilePath Path to SCSS file (EXT: or absolute)
+     * @param array $variables SCSS variables to inject
+     * @param string|null $cssFilePath Target CSS file path (auto-generated if null)
+     * @param bool $useSourceMap Enable inline source maps
+     * @param OutputStyle $outputStyle CSS output style
+     * @return string Path to compiled CSS file
      * @throws FileDoesNotExistException
      * @throws NoSuchCacheException
      * @throws SassException
      */
-    public static function compileFile(string $scssFilePath, array $variables, ?string $cssFilePath = null, bool $useSourceMap = false, ?OutputStyle $outputStyle = null): string
+    public static function compileFile(string $scssFilePath, array $variables, ?string $cssFilePath = null, bool $useSourceMap = false, OutputStyle $outputStyle = OutputStyle::COMPRESSED): string
     {
-        if ($outputStyle === null) {
-            $outputStyle = OutputStyle::COMPRESSED;
-        }
         $scssFilePath = GeneralUtility::getFileAbsFileName($scssFilePath);
         $variablesHash = hash('md5', implode(',', $variables) . $scssFilePath);
         $sitePath = Environment::getPublicPath() . '/';
@@ -87,12 +73,9 @@ class Compiler
         }
 
         if ($cssFilePath === null) {
-            // no target filename -> auto
-
             $pathInfo = pathinfo($scssFilePath);
             $filename = $pathInfo['filename'];
             $outputDir = 'typo3temp/assets/css/';
-
 
             $outputDir = str_ends_with($outputDir, '/') ? $outputDir : $outputDir . '/';
             if (!strcmp(substr($outputDir, 0, 4), 'EXT:')) {
@@ -106,129 +89,142 @@ class Compiler
             $cssFilePath = $outputDir . $filename . ($variablesHash ? '_' . $variablesHash : '') . '.css';
         }
 
-
-
-        // Sass compiler cache
-        $cacheDir = $sitePath . 'typo3temp/assets/scss/cache/';
-        if (!is_dir($cacheDir)) {
-            GeneralUtility::mkdir_deep($cacheDir);
-        }
-        if (!is_writable($cacheDir)) {
-            // TODO: Error message
-            return '';
-        }
-
-        $convertedVariables = [];
-        foreach ($variables as $varName => $varValue) {
-
-            if ($varValue instanceof Value) {
-                $convertedVariables[$varName] = $varValue;
-                continue;
-            }
-
-            if (str_ends_with($varValue, 'rem')) {
-                $convertedVariables[$varName] = SassNumber::create((float)$varValue, 'rem');
-            } elseif (str_ends_with($varValue, 'px')) {
-                $convertedVariables[$varName] = SassNumber::create((int)$varValue, 'px');
-            } elseif (str_starts_with($varValue, '#')) {
-                $rgb = self::hex2rgb($varValue);
-                $convertedVariables[$varName] = SassColor::rgb($rgb[0], $rgb[1], $rgb[2]);
-            } elseif (str_contains($varName,'font-family')) {
-                $convertedVariables[$varName] = new SassString($varValue, false);
-            } else {
-                $convertedVariables[$varName] = ValueConverter::fromPhp($varValue);
-            }
-        }
-
-        $scssCompiler = new \ScssPhp\ScssPhp\Compiler();
-        $scssCompiler->addVariables($convertedVariables);
-        $scssCompiler->setOutputStyle($outputStyle);
-
-        if ($useSourceMap) {
-            $scssCompiler->setSourceMap(\ScssPhp\ScssPhp\Compiler::SOURCE_MAP_INLINE);
-
-            $scssCompiler->setSourceMapOptions([
-                'sourceMapBasepath' => $sitePath,
-                'sourceMapRootpath' => '/',
-            ]);
-        }
-
-        $absoluteFilePath = dirname($scssFilePath);
-        $relativeFilePath = PathUtility::getAbsoluteWebPath($absoluteFilePath);
-
-        $visualImportPath = dirname($scssFilePath);
-
-        $importers = [
-            new ExtensionFilesystemImporter($visualImportPath),
-            //new VariableFilesystemImporter($absoluteFilePath, $scssCompiler),
-            new FilesystemImporter($absoluteFilePath)
-        ];
-
-        foreach ($importers as $importer) {
-            $scssCompiler->addImporter($importer);
-        }
-
-
-        $scssCompiler->registerFunction(
-            'url',
-            function ($args) use (
-                $scssCompiler,
-                $absoluteFilePath,
-                $relativeFilePath
-            ): SassString {
-                $marker = $args[0][1];
-                $args[0][1] = '';
-                $result = $scssCompiler->compileValue($args[0]);
-                if (str_starts_with($result,'data:')) {
-                    return new SassString('url(' . $marker . $result . $marker . ')', false);
-                }
-                if (is_file(PathUtility::getCanonicalPath($absoluteFilePath . '/' . $result))) {
-                    $result = PathUtility::getAbsoluteWebPath(PathUtility::getCanonicalPath($relativeFilePath . '/' . $result));
-                } elseif (str_starts_with($result, 'EXT:')) {
-                    $file = strstr($result, '?', true) ?: $result;
-                    if (is_file(GeneralUtility::getFileAbsFileName($file))) {
-                        $result = PathUtility::getAbsoluteWebPath(GeneralUtility::getFileAbsFileName($result));
-                    }
-                }
-                //$result = str_starts_with($result, '/') ? substr($result, 1) : $result;
-
-                return new SassString( 'url(' . $marker . $result . $marker . ')', false);
-            },
-            [0 => 'string']
-        );
-
-        $importResolver = new ImportResolver($importers);
-
         /** @var FileBackend $cache */
         $cache = GeneralUtility::makeInstance(CacheManager::class)->getCache('ws_scss');
 
-        $scssFilePathUri = Uri::new($scssFilePath);
-
-        $cacheKey = hash('sha1', $scssFilePath);
-        $calculatedContentHash = self::calculateContentHash($importResolver, $scssFilePathUri, $variables);
+        // Include cssFilePath in cache key so different outputfile targets
+        // (e.g. theme.css vs themeSkarupke.css) get separate cache entries
+        $cacheKey = hash('sha1', $scssFilePath . '|' . $cssFilePath);
+        $calculatedContentHash = self::calculateContentHash($scssFilePath, $variables);
         $calculatedContentHash .= md5($cssFilePath);
         if ($useSourceMap) {
             $calculatedContentHash .= 'sm';
         }
-
         $calculatedContentHash .= $outputStyle->value;
 
         if ($cache->has($cacheKey)) {
             $contentHashCache = $cache->get($cacheKey);
             if ($contentHashCache === $calculatedContentHash) {
-                return $cssFilePath;
+                // Verify the CSS file actually exists before returning from cache
+                $absoluteCssPath = GeneralUtility::getFileAbsFileName($cssFilePath);
+                if ($absoluteCssPath !== '' && file_exists($absoluteCssPath)) {
+                    return $cssFilePath;
+                }
             }
         }
 
+        $parser = new \ScssPhp\ScssPhp\Compiler();
+        $parser->setOutputStyle($outputStyle);
+
+        // Add the SCSS file's directory as import path for relative imports
+        $parser->addImportPath(dirname($scssFilePath));
+
+        // Add a callable resolver for EXT: prefixed imports
+        $parser->addImportPath(function (string $path): ?string {
+            if (str_starts_with($path, 'EXT:')) {
+                $resolved = GeneralUtility::getFileAbsFileName($path);
+                if ($resolved !== '' && file_exists($resolved)) {
+                    return $resolved;
+                }
+                if (!str_ends_with($path, '.scss')) {
+                    $resolved = GeneralUtility::getFileAbsFileName($path . '.scss');
+                    if ($resolved !== '' && file_exists($resolved)) {
+                        return $resolved;
+                    }
+                }
+            }
+            return null;
+        });
+
+        // Add vendor directory as import path so SCSS files can use
+        // @import "vendor-name/package-name/..." without fragile relative paths
+        foreach (self::getAdditionalImportPaths() as $importPath) {
+            $parser->addImportPath($importPath);
+        }
+
+        if ($useSourceMap) {
+            $parser->setSourceMap(\ScssPhp\ScssPhp\Compiler::SOURCE_MAP_INLINE);
+
+            $parser->setSourceMapOptions([
+                'sourceMapBasepath' => $sitePath,
+                'sourceMapRootpath' => '/',
+            ]);
+        }
+
+        // Build SCSS source: variable declarations followed by file import.
+        // Variables are injected as SCSS code so expressions referencing other
+        // variables (e.g. "$line-height-base - .25") are evaluated in context.
+        //
+        // Two-phase injection:
+        // - Phase 1 (prepend): Literals and expressions referencing only our own
+        //   TypoScript variables → placed BEFORE import to override !default
+        // - Phase 2 (append): Values referencing external SCSS variables (e.g.
+        //   Bootstrap's $cyan, $white) → placed AFTER import where they exist
+        //
+        // Transitive dependencies: if a variable references another variable
+        // that is in the append phase, it must also be appended.
+
+        // Pass 1: Categorize variables as prepend or append
+        $appendSet = [];
+        foreach ($variables as $name => $value) {
+            $strValue = (string)$value;
+            if ($strValue === '') {
+                continue;
+            }
+            if (preg_match_all('/\$([a-zA-Z_][a-zA-Z0-9_-]*)/', $strValue, $refs)) {
+                foreach ($refs[1] as $refName) {
+                    if (!array_key_exists($refName, $variables)) {
+                        $appendSet[$name] = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Pass 2: Propagate — variables referencing append-phase variables must also append
+        $changed = true;
+        while ($changed) {
+            $changed = false;
+            foreach ($variables as $name => $value) {
+                if (isset($appendSet[$name])) {
+                    continue;
+                }
+                $strValue = (string)$value;
+                if (preg_match_all('/\$([a-zA-Z_][a-zA-Z0-9_-]*)/', $strValue, $refs)) {
+                    foreach ($refs[1] as $refName) {
+                        if (isset($appendSet[$refName])) {
+                            $appendSet[$name] = true;
+                            $changed = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Pass 3: Build prepend and append source
+        $prependVars = '';
+        $appendVars = '';
+        foreach ($variables as $name => $value) {
+            $strValue = (string)$value;
+            if ($strValue === '') {
+                continue;
+            }
+            // Quote path values (start with / or ./) that don't contain SCSS
+            // variable references — otherwise the leading / is parsed as division
+            if (preg_match('#^\.{0,2}/#', $strValue) && !str_contains($strValue, '$')) {
+                $strValue = "'" . str_replace("'", "\\'", $strValue) . "'";
+            }
+            if (isset($appendSet[$name])) {
+                $appendVars .= '$' . $name . ': ' . $strValue . ";\n";
+            } else {
+                $prependVars .= '$' . $name . ': ' . $strValue . ";\n";
+            }
+        }
+        $scssSource = $prependVars . '@import "' . $scssFilePath . '";' . "\n" . $appendVars;
 
         try {
-
-
-            $scssSource = GeneralUtility::getUrl($scssFilePath);
-            if ($scssSource === false) {
-                throw new FileDoesNotExistException('SCSS file not found: ' . $scssFilePath, 1633031234);
-            }
-            $result = $scssCompiler->compileString($scssSource);
+            $result = $parser->compileString($scssSource);
             $cssCode = $result->getCss();
 
             $eventDispatcher = GeneralUtility::makeInstance(EventDispatcherInterface::class);
@@ -240,11 +236,10 @@ class Compiler
             $cache->set($cacheKey, $calculatedContentHash, ['scss'], 0);
             GeneralUtility::mkdir_deep(dirname(GeneralUtility::getFileAbsFileName($cssFilePath)));
             GeneralUtility::writeFile(GeneralUtility::getFileAbsFileName($cssFilePath), $cssCode);
-
         } catch (\Exception $ex) {
-            debug($ex->getMessage());
+            DebugUtility::debug($ex->getMessage());
 
-            /** @var $logger Logger */
+            /** @var Logger $logger */
             $logger = GeneralUtility::makeInstance(LogManager::class)->getLogger(__CLASS__);
             $logger->error($ex->getMessage());
         }
@@ -252,51 +247,102 @@ class Compiler
         return $cssFilePath;
     }
 
-
     /**
-     * Calculating content hash to detect changes
+     * Calculate a content hash to detect changes in the SCSS source tree.
      *
-     * @param string $scssFileName Existing scss file absolute path
-     * @param array $vars
-     * @param array $visitedFiles
-     * @return string
+     * Recursively resolves @import statements and includes imported file
+     * content in the hash. Supports partial files (_filename.scss) and
+     * vendor import paths.
+     *
+     * @param string $scssFileName Absolute path to SCSS file
+     * @param array $vars SCSS variables to include in hash
+     * @param array $visitedFiles Already visited files (cycle protection)
+     * @return string SHA1 content hash
      */
-    public static function calculateContentHash(ImportResolver $importerResolver, Uri $scssFileName, array $vars = [], array $visitedFiles = []): string
+    public static function calculateContentHash(string $scssFileName, array $vars = [], array $visitedFiles = []): string
     {
-        if (\in_array($scssFileName->toString(), $visitedFiles, true)) {
+        if (\in_array($scssFileName, $visitedFiles, true)) {
             return '';
         }
-        $visitedFiles[] = $scssFileName->toString();
+        $visitedFiles[] = $scssFileName;
 
-        $path = Path::fromUri($scssFileName);
-        $content = file_get_contents($path);
+        $content = file_get_contents($scssFileName);
         $pathInfo = pathinfo($scssFileName);
 
         $hash = hash('sha1', $content);
-        $hash = hash('sha1', $hash . implode(',', $vars));
+        if ($vars !== []) {
+            $hash = hash('sha1', $hash . implode(',', $vars));
+        }
 
         $imports = self::collectImports($content);
-        foreach ($imports as $importPath) {
+        foreach ($imports as $import) {
+            $hashImport = '';
 
-            $canonicalizeContext = new CanonicalizeContext($scssFileName, true);
-            $absoluteImportPath = ImportContext::withCanonicalizeContext($canonicalizeContext, fn () => $importerResolver->resolveImportPath($importPath, $pathInfo['dirname']));
-            if ($absoluteImportPath !== null) {
-                $hashImport = self::calculateContentHash($importerResolver, $absoluteImportPath, $visitedFiles);
-                if ($hashImport !== '') {
-                    $hash = hash('sha1', $hash . $hashImport);
+            if (file_exists($pathInfo['dirname'] . '/' . $import . '.scss')) {
+                $hashImport = self::calculateContentHash($pathInfo['dirname'] . '/' . $import . '.scss', $vars, $visitedFiles);
+            } else {
+                // Try partial file (_filename.scss)
+                $parts = explode('/', $import);
+                $filename = '_' . array_pop($parts);
+                $parts[] = $filename;
+                if (file_exists($pathInfo['dirname'] . '/' . implode('/', $parts) . '.scss')) {
+                    $hashImport = self::calculateContentHash(
+                        $pathInfo['dirname'] . '/' . implode('/', $parts) . '.scss',
+                        $vars,
+                        $visitedFiles
+                    );
                 }
+            }
+
+            // Fallback: resolve via additional import paths (e.g. vendor/)
+            if ($hashImport === '') {
+                foreach (self::getAdditionalImportPaths() as $importBasePath) {
+                    if (file_exists($importBasePath . '/' . $import . '.scss')) {
+                        $hashImport = self::calculateContentHash($importBasePath . '/' . $import . '.scss', $vars, $visitedFiles);
+                        break;
+                    }
+                    $parts = explode('/', $import);
+                    $filename = '_' . array_pop($parts);
+                    $parts[] = $filename;
+                    if (file_exists($importBasePath . '/' . implode('/', $parts) . '.scss')) {
+                        $hashImport = self::calculateContentHash($importBasePath . '/' . implode('/', $parts) . '.scss', $vars, $visitedFiles);
+                        break;
+                    }
+                }
+            }
+
+            if ($hashImport !== '') {
+                $hash = hash('sha1', $hash . $hashImport);
             }
         }
 
         return $hash;
     }
 
+    /**
+     * Get additional import paths for the SCSS compiler.
+     *
+     * Adds the Composer vendor directory so SCSS files can import
+     * packages using vendor-relative paths (e.g. "vendor-name/package-name/...").
+     *
+     * @return array<string>
+     */
+    private static function getAdditionalImportPaths(): array
+    {
+        $paths = [];
+        $vendorPath = Environment::getProjectPath() . '/vendor';
+        if (is_dir($vendorPath)) {
+            $paths[] = $vendorPath;
+        }
+
+        return $paths;
+    }
 
     /**
      * Collect all @import files in the given content.
      *
-     * @param string $content
-     * @return array
+     * @param string $content SCSS source content
+     * @return array<string> List of import paths
      */
     private static function collectImports(string $content): array
     {
@@ -317,20 +363,4 @@ class Compiler
 
         return $imports;
     }
-
-    private static function hex2rgb($hex)
-    {
-        $hex = str_replace("#", "", $hex);
-        if (strlen($hex) === 3) {
-            $r = hexdec($hex[0] . $hex[0]);
-            $g = hexdec($hex[1] . $hex[1]);
-            $b = hexdec($hex[2] . $hex[2]);
-        } else {
-            $r = hexdec(substr($hex, 0, 2));
-            $g = hexdec(substr($hex, 2, 2));
-            $b = hexdec(substr($hex, 4, 2));
-        }
-        return [$r, $g, $b];
-    }
-
 }

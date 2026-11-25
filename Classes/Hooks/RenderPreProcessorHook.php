@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace WapplerSystems\WsScss\Hooks;
 
 /***************************************************************
@@ -46,12 +48,9 @@ use WapplerSystems\WsScss\Event\AfterVariableDefinitionEvent;
 class RenderPreProcessorHook
 {
 
-    private $variables = [];
+    private array $variables = [];
 
-    /**
-     * @var \TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer
-     */
-    private $contentObjectRenderer;
+    private ?ContentObjectRenderer $contentObjectRenderer = null;
 
     /**
      * Main hook function
@@ -122,6 +121,17 @@ class RenderPreProcessorHook
             $this->variables = $parsedTypoScriptVariables;
         }
 
+        // Resolve EXT: prefixes in variable values to web-accessible paths
+        // e.g. "EXT:fontawesome/Resources/Public/..." → "/_assets/{hash}/..."
+        foreach ($this->variables as $variable => $value) {
+            if (is_string($value) && str_starts_with($value, 'EXT:')) {
+                $absolutePath = GeneralUtility::getFileAbsFileName($value);
+                if ($absolutePath !== '' && (file_exists($absolutePath) || is_dir($absolutePath))) {
+                    $this->variables[$variable] = PathUtility::getAbsoluteWebPath($absolutePath);
+                }
+            }
+        }
+
         $eventDispatcher = GeneralUtility::makeInstance(EventDispatcherInterface::class);
         $event = $eventDispatcher->dispatch(new AfterVariableDefinitionEvent($this->variables));
         $this->variables = $event->getVariables();
@@ -150,12 +160,12 @@ class RenderPreProcessorHook
                         continue;
                     }
 
-                    if ($file === $keyValue) {
+                    if ($file === $keyValue || GeneralUtility::getFileAbsFileName($file) === GeneralUtility::getFileAbsFileName($keyValue)) {
                         $subConf = $setup['page.']['includeCSS.'][$key . '.'] ?? [];
 
                         $outputFilePath = $subConf['outputfile'] ?? null;
-                        $useSourceMap = $this->parseBooleanSetting($subConf['sourceMap'] ?? false, false);
-                        $unlink = $this->parseBooleanSetting($subConf['unlink'] ?? false, false);
+                        $useSourceMap = $this->parseBooleanSetting($subConf['sourceMap'] ?? '', false);
+                        $unlink = $this->parseBooleanSetting($subConf['unlink'] ?? '', false);
                         if (isset($subConf['outputStyle'])) {
                             if ($subConf['outputStyle'] === 'expanded') {
                                 $outputStyle = OutputStyle::EXPANDED;
@@ -164,7 +174,7 @@ class RenderPreProcessorHook
                             }
                         }
                         $variables = array_filter($subConf['variables.'] ?? []);
-                        $inlineOutput = $this->parseBooleanSetting($setup['page.']['includeCSS.'][$key . '.']['inlineOutput'] ?? false, false);
+                        $inlineOutput = $this->parseBooleanSetting($setup['page.']['includeCSS.'][$key . '.']['inlineOutput'] ?? '', false);
                     }
                 }
             }
@@ -194,6 +204,13 @@ class RenderPreProcessorHook
                 unset($conf['tagAttributes']['sourceMap']);
                 unset($conf['tagAttributes']['variables.']);
                 unset($conf['tagAttributes']['outputfile']);
+                unset($conf['tagAttributes']['outputStyle']);
+                unset($conf['tagAttributes']['unlink']);
+
+                if ($outputFilePath !== null) {
+                    $conf['compress'] = false;
+                    $cssFilePath = '/' . ltrim($cssFilePath, '/');
+                }
 
                 $cssFiles[$cssFilePath] = $conf;
                 $cssFiles[$cssFilePath]['file'] = $cssFilePath;
